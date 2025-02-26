@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- favicon -->
+  <link rel="icon" href="/logo.ico" />
+  <link rel="apple-touch-icon" href="/logo.ico" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="msapplication-TileColor" content="#000000" />
+  <link rel="manifest" href="/manifest.json" />
+    <!-- SEO -->
+    <meta
+      name="description"
+      content="Gimnasio inteligente"
+    />
+    <meta
+      name="keywords"
+      content="gym, inteligente, metricas"
+    />
+    <meta name="author" content="MBC Developers" />
+  <title>Icosoft</title>
+  <script>
+    if (localStorage.theme === 'dark' || !('theme' in localStorage)) {
+      document.querySelector('html').classList.add('dark');
+      document.querySelector('html').style.colorScheme = 'dark';
+    } else {
+      document.querySelector('html').classList.remove('dark');
+      document.querySelector('html').style.colorScheme = 'light';
+    }        
+  </script>
+</head>
+
+<body class="font-inter antialiased bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400">
+  <noscript>Necesitas habilitar JavaScript para correr esta aplicación</noscript>
+  <script>
+    if (localStorage.getItem('sidebar-expanded') == 'true') {
+      document.querySelector('body').classList.add('sidebar-expanded');
+    } else {
+      document.querySelector('body').classList.remove('sidebar-expanded');
+    }
+  </script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
