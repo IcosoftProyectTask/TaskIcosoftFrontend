@@ -38,11 +38,11 @@ export default function CreateAccount() {
       firstSurname: "",
       secondSurname: "",
       phoneNumber: "",
-      age: "",
+   //   age: "",
       email:"",
       password: "",
-      repeatPassword: "",
-      birthdate: ""
+      repeatPassword: ""
+     // birthdate: ""
 
     },
     validationSchema: Yup.object({
@@ -73,12 +73,6 @@ export default function CreateAccount() {
         )
         .required("El telefono es requerido"),
 
-      age: Yup.string()
-        .matches(
-          Exp.integerRegex,
-          "Solo puede contener numeros"
-        )
-        .required("La edad es requerido"),
       email: Yup.string()
         .email("El email no es válido")
         .required("El email es requerido")
@@ -103,7 +97,7 @@ export default function CreateAccount() {
       }
     
       // Convierte la fecha de nacimiento al formato 
-      const birthdate = new Date(values.birthdate).toISOString();
+    //  const birthdate = new Date(values.birthdate).toISOString();
     
       // Estructura los datos en el formato requerido por la API
       const formData = {
@@ -111,11 +105,11 @@ export default function CreateAccount() {
         firstSurname: values.firstSurname,
         secondSurname: values.secondSurname,
         phoneNumber: values.phoneNumber,
-        age: values.age,
+       // age: values.age,
         email: values.email,
         password: values.password,
         repeatPassword: values.repeatPassword,
-        birthdate: birthdate, // Usa la fecha convertida
+      //  birthdate: birthdate, // Usa la fecha convertida
       };
      
       // Llama a mutate
@@ -181,6 +175,7 @@ export default function CreateAccount() {
               formik={formik}
             />
           </div>
+          {/*
           <div className="flex-1">
           <label htmlFor="edad" className="text-gray-700">
             Edad
@@ -204,6 +199,7 @@ export default function CreateAccount() {
             formik={formik}
           />
         </div>
+        */}
 
         </div>
 

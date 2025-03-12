@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
+import { NewTaskModal } from './NewTaskModal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import {
   Dialog,
@@ -30,33 +31,24 @@ import {
 } from 'lucide-react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import {
+  createSupportTask,
+  getSupportTasks,
+  updateSupportTask,
+  deleteSupportTask,
+  updateSupportTaskStatus,
+  updateSupportTaskAsigment,
+} from '../service/SupportTask';
+import { getStatusTasks } from '../service/Statustask'; // Importamos el servicio para obtener estados
+import { getAll as getUsers } from '../service/UserAPI';
 
 function Dashboard() {
-  const [tasks, setTasks] = useState([
-    {
-      id: 1,
-      title: "Error en impresora HP",
-      description: "Usuario reporta que la impresora no responde",
-      priority: "alta",
-      status: "pendiente",
-      assignedTo: "Carlos Técnico",
-      createdAt: "2024-02-22 10:30",
-      deadline: "2024-02-23 10:30",
-      category: "hardware"
-    },
-    {
-      id: 2,
-      title: "Configuración de correo",
-      description: "Nuevo empleado necesita configuración de correo corporativo",
-      priority: "media",
-      status: "en_progreso",
-      assignedTo: "Ana Soporte",
-      createdAt: "2024-02-22 09:15",
-      deadline: "2024-02-22 17:00",
-      category: "software"
-    }
-  ]);
-
+  const [tasks, setTasks] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [statusTasks, setStatusTasks] = useState([]); // Estado para almacenar los estados de tareas
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
@@ -71,25 +63,72 @@ function Dashboard() {
   });
   const [editTask, setEditTask] = useState(null);
   const [sortBy, setSortBy] = useState('createdAt');
+  const [refreshKey, setRefreshKey] = useState(0); // Añadimos una key para forzar renderizado
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const tasksData = await getSupportTasks();
+        const usersData = await getUsers();
+        const statusData = await getStatusTasks();
+
+        setTasks(tasksData);
+        setUsers(usersData.data);
+        setStatusTasks(statusData.data);
+        setError(null);
+      } catch (error) {
+        console.error('Error al obtener los datos:', error);
+        setError('No se pudieron cargar los datos. Por favor, inténtalo de nuevo más tarde.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [refreshKey]); // Añadir refreshKey como dependencia
+
+  // Estadísticas de tareas
   const getTaskStats = () => {
+    if (!Array.isArray(tasks)) {
+      console.error('Tasks is not an array:', tasks);
+      return {
+        total: 0,
+        pendientes: 0,
+        enProgreso: 0,
+        completadas: 0
+      };
+    }
+
     return {
       total: tasks.length,
-      pendientes: tasks.filter(t => t.status === 'pendiente').length,
-      enProgreso: tasks.filter(t => t.status === 'en_progreso').length,
-      completadas: tasks.filter(t => t.status === 'completado').length
+      pendientes: tasks.filter(t => t.statusTask && t.statusTask.name === 'Pendiente').length,
+      enProgreso: tasks.filter(t => t.statusTask && t.statusTask.name === 'En Progreso').length,
+      completadas: tasks.filter(t => t.statusTask && t.statusTask.name === 'Completado').length
     };
   };
 
   const stats = getTaskStats();
 
+  const handleCreateTask = async (task) => {
+    try {
+      const createdTask = await createSupportTask(task);
+      setTasks([...tasks, createdTask]);
+      toast.success('Tarea creada exitosamente.');
+    } catch (error) {
+      console.error('Error al crear la tarea:', error);
+      toast.error('Error al crear la tarea.');
+    }
+  };
+
+  // Colores para prioridades y estados
   const getPriorityColor = (priority) => {
     const colors = {
       alta: "bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100",
       media: "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100",
       baja: "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
     };
-    return colors[priority] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
+    return colors[priority.toLowerCase()] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
   };
 
   const getStatusColor = (status) => {
@@ -98,71 +137,144 @@ function Dashboard() {
       en_progreso: "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100",
       completado: "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
     };
-    return colors[status] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
+    return colors[status.toLowerCase().replace(' ', '_')] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
   };
 
-  const handleAddTask = () => {
+  // Crear una nueva tarea
+  const handleAddTask = async () => {
     if (newTask.title && newTask.description) {
       if (newTask.deadline && new Date(newTask.deadline) < new Date()) {
         toast.error('La fecha límite no puede ser anterior a la fecha actual.');
         return;
       }
-      const task = {
-        ...newTask,
-        id: tasks.length + 1,
-        createdAt: new Date().toLocaleString()
+
+      const handleTaskCreated = (newTask) => {
+        setTasks((prevTasks) => [...prevTasks, newTask]);
+        setRefreshKey((prevKey) => prevKey + 1); // Forzar re-renderizado
       };
-      setTasks([...tasks, task]);
-      setNewTask({
-        title: '',
-        description: '',
-        priority: 'media',
-        status: 'pendiente',
-        assignedTo: '',
-        category: 'software',
-        deadline: ''
-      });
-      toast.success('Tarea creada exitosamente.');
+
+      try {
+        const createdTask = await createSupportTask(newTask);
+        setTasks([...tasks, createdTask]);
+        setNewTask({
+          title: '',
+          description: '',
+          priority: 'media',
+          status: 'pendiente',
+          assignedTo: '',
+          category: 'software',
+          deadline: ''
+        });
+        toast.success('Tarea creada exitosamente.');
+      } catch (error) {
+        console.error('Error al crear la tarea:', error);
+        toast.error('Error al crear la tarea.');
+      }
     } else {
       toast.error('Por favor, complete todos los campos requeridos.');
     }
   };
 
-  const handleEditTask = (task) => {
-    setEditTask(task);
+  // Reasignar una tarea
+  const handleReassignTask = async (taskId, newUserId) => {
+    try {
+      await updateSupportTaskAsigment(taskId, {
+        idUser: newUserId,
+      });
+
+      // En lugar de actualizar solo una tarea, recargamos todas
+      const tasksData = await getSupportTasks();
+      setTasks(tasksData);
+
+      toast.success('Tarea reasignada exitosamente.');
+    } catch (error) {
+      console.error('Error al reasignar la tarea:', error);
+      toast.error('Error al reasignar la tarea.');
+    }
   };
 
-  const handleUpdateTask = () => {
+  // Actualizar una tarea
+  const handleUpdateTask = async () => {
     if (editTask.title && editTask.description) {
       if (editTask.deadline && new Date(editTask.deadline) < new Date()) {
         toast.error('La fecha límite no puede ser anterior a la fecha actual.');
         return;
       }
-      setTasks(tasks.map(t => t.id === editTask.id ? editTask : t));
-      setEditTask(null);
-      toast.success('Tarea actualizada exitosamente.');
+
+      try {
+        const updatedTask = await updateSupportTask(editTask.idSupportTask, editTask);
+        setTasks(tasks.map(t => (t.idSupportTask === updatedTask.idSupportTask ? updatedTask : t)));
+        setEditTask(null);
+        toast.success('Tarea actualizada exitosamente.');
+      } catch (error) {
+        console.error('Error al actualizar la tarea:', error);
+        toast.error('Error al actualizar la tarea.');
+      }
     } else {
       toast.error('Por favor, complete todos los campos requeridos.');
     }
   };
 
-  const handleDeleteTask = (taskId) => {
-    setTasks(tasks.filter(task => task.id !== taskId));
-    toast.success('Tarea eliminada exitosamente.');
+  // Eliminar una tarea
+  const handleDeleteTask = async (taskId) => {
+    try {
+      await deleteSupportTask(taskId);
+      setTasks(tasks.filter(task => task.idSupportTask !== taskId));
+      toast.success('Tarea eliminada exitosamente.');
+    } catch (error) {
+      console.error('Error al eliminar la tarea:', error);
+      toast.error('Error al eliminar la tarea.');
+    }
   };
 
-  const handleStatusChange = (taskId, newStatus) => {
-    setTasks(tasks.map(task =>
-      task.id === taskId ? { ...task, status: newStatus } : task
-    ));
-    toast.success('Estado de la tarea actualizado.');
+  const handleStatusChange = async (taskId, newStatusId) => {
+    try {
+      // Conversión a entero para asegurar que el formato es correcto
+      const statusIdInt = parseInt(newStatusId);
+      // Llamada a la API con el formato esperado
+      await updateSupportTaskStatus(taskId, {
+        idStatus: statusIdInt
+      });
+
+      // Actualización local del estado después de una operación exitosa
+      setTasks(prevTasks =>
+        prevTasks.map(task => {
+          if (task.idSupportTask === taskId) {
+            // Buscamos el objeto de estado completo para asegurar que tenemos toda la información
+            const selectedStatus = statusTasks.find(status => status.idStatus === statusIdInt);
+
+            return {
+              ...task,
+              statusTask: selectedStatus ? {
+                idStatus: statusIdInt,
+                name: selectedStatus.name
+              } : {
+                idStatus: statusIdInt,
+                name: 'Estado Desconocido' // Valor predeterminado por si no encontramos el estado
+              }
+            };
+          }
+          return task;
+        })
+      );
+
+      // Forzar renderizado
+      // setRefreshKey(prev => prev + 1);
+
+      toast.success('Estado de la tarea actualizado.');
+
+    } catch (error) {
+      console.error('Error al actualizar el estado de la tarea:', error);
+      toast.error('Error al actualizar el estado de la tarea.');
+    }
   };
 
+  // Filtrar y ordenar tareas
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPriority = filterPriority === 'todos' || task.priority === filterPriority;
-    const matchesStatus = filterStatus === 'todos' || task.status === filterStatus;
+    const matchesPriority = filterPriority === 'todos' || task.priority.name.toLowerCase() === filterPriority;
+    const matchesStatus = filterStatus === 'todos' || task.statusTask.name.toLowerCase().replace(' ', '_') === filterStatus;
     return matchesSearch && matchesPriority && matchesStatus;
   });
 
@@ -171,13 +283,22 @@ function Dashboard() {
       return new Date(b.createdAt) - new Date(a.createdAt);
     } else if (sortBy === 'priority') {
       const priorityOrder = { alta: 3, media: 2, baja: 1 };
-      return priorityOrder[b.priority] - priorityOrder[a.priority];
+      return priorityOrder[b.priority.name.toLowerCase()] - priorityOrder[a.priority.name.toLowerCase()];
     } else if (sortBy === 'status') {
       const statusOrder = { pendiente: 3, en_progreso: 2, completado: 1 };
-      return statusOrder[b.status] - statusOrder[a.status];
+      return statusOrder[b.statusTask.name.toLowerCase().replace(' ', '_')] - statusOrder[a.statusTask.name.toLowerCase().replace(' ', '_')];
     }
     return 0;
   });
+
+  // Formatear fechas
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
+  if (loading) return <div>Cargando...</div>;
+  if (error) return <div>{error}</div>;
 
   return (
     <>
@@ -190,60 +311,16 @@ function Dashboard() {
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setIsNewTaskModalOpen(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Nueva Tarea
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] dark:bg-gray-900">
-            <DialogHeader>
-              <DialogTitle className="dark:text-white">Crear Nueva Tarea</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <Input
-                placeholder="Título de la tarea"
-                value={newTask.title}
-                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                className="dark:bg-gray-800 dark:text-white"
-              />
-              <Textarea
-                placeholder="Descripción"
-                value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                className="dark:bg-gray-800 dark:text-white"
-              />
-              <Select
-                value={newTask.priority}
-                onValueChange={(value) => setNewTask({ ...newTask, priority: value })}
-              >
-                <SelectTrigger className="dark:bg-gray-800 dark:text-white">
-                  <SelectValue placeholder="Prioridad" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:text-white">
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="baja">Baja</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder="Asignar a"
-                value={newTask.assignedTo}
-                onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-                className="dark:bg-gray-800 dark:text-white"
-              />
-              <Input
-                type="datetime-local"
-                value={newTask.deadline}
-                onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
-                className="dark:bg-gray-800 dark:text-white"
-              />
-              <DialogFooter>
-                <Button onClick={handleAddTask} className="w-full">
-                  Crear Tarea
-                </Button>
-              </DialogFooter>
-            </div>
-          </DialogContent>
+          <NewTaskModal
+            isOpen={isNewTaskModalOpen}
+            onClose={() => setIsNewTaskModalOpen(false)}
+            onCreateTask={handleCreateTask}
+          />
         </Dialog>
       </div>
 
@@ -347,15 +424,15 @@ function Dashboard() {
         <div className="col-span-12">
           <div className="grid grid-cols-1 gap-4">
             {sortedTasks.map((task) => (
-              <Card key={task.id} className="shadow-sm hover:shadow-md transition-shadow dark:bg-gray-900">
+              <Card key={`${task.idSupportTask}-${refreshKey}`} className="shadow-sm hover:shadow-md transition-shadow dark:bg-gray-900">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-xl font-bold dark:text-white">{task.title}</CardTitle>
                   <div className="flex gap-2">
-                    <Badge className={getPriorityColor(task.priority)}>
-                      {task.priority.toUpperCase()}
+                    <Badge className={getPriorityColor(task.priority.name)}>
+                      {task.priority.name.toUpperCase()}
                     </Badge>
-                    <Badge className={getStatusColor(task.status)}>
-                      {task.status.replace('_', ' ').toUpperCase()}
+                    <Badge className={getStatusColor(task.statusTask.name)}>
+                      {task.statusTask.name.toUpperCase()}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -365,54 +442,54 @@ function Dashboard() {
                     <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                       <div className="flex items-center gap-1">
                         <User size={16} />
-                        <span>{task.assignedTo}</span>
+                        <span>{task.user.name} {task.user.firstSurname}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock size={16} />
-                        <span>Creado: {task.createdAt}</span>
+                        <span>Creado: {formatDate(task.createdAt)}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <AlertCircle size={16} />
-                        <span>Vence: {task.deadline}</span>
+                        <span>Vence: {formatDate(task.endTask)}</span>
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {/* Campo para reasignar tarea */}
                       <Select
-                        value={task.assignedTo}
-                        onValueChange={(value) => {
-                          setTasks(tasks.map(t =>
-                            t.id === task.id ? { ...t, assignedTo: value } : t
-                          ));
-                        }}
+                        value={task.user.idUser.toString()}
+                        onValueChange={(value) => handleReassignTask(task.idSupportTask, parseInt(value))}
                       >
                         <SelectTrigger className="w-[200px] dark:bg-gray-800 dark:text-white">
                           <SelectValue placeholder="Asignar a..." />
                         </SelectTrigger>
                         <SelectContent className="dark:bg-gray-800 dark:text-white">
-                          <SelectItem value="Carlos Técnico">Carlos Técnico</SelectItem>
-                          <SelectItem value="Ana Soporte">Ana Soporte</SelectItem>
-                          <SelectItem value="Juan Administrador">Juan Administrador</SelectItem>
-                          {/* Añadir más opciones según los trabajadores disponibles */}
+                          {Array.isArray(users) && users.map((user) => (
+                            <SelectItem key={user.idUser} value={user.idUser.toString()}>
+                              {user.name} {user.firstSurname}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
+                      {/* Campo para cambiar estado - Ahora usando statusTasks del API */}
                       <Select
-                        value={task.status}
-                        onValueChange={(value) => handleStatusChange(task.id, value)}
+                        value={task.statusTask.idStatus.toString()}
+                        onValueChange={(value) => handleStatusChange(task.idSupportTask, value)}
                       >
                         <SelectTrigger className="w-[200px] dark:bg-gray-800 dark:text-white">
                           <SelectValue placeholder="Cambiar estado" />
                         </SelectTrigger>
                         <SelectContent className="dark:bg-gray-800 dark:text-white">
-                          <SelectItem value="pendiente">Pendiente</SelectItem>
-                          <SelectItem value="en_progreso">En Progreso</SelectItem>
-                          <SelectItem value="completado">Completado</SelectItem>
+                          {Array.isArray(statusTasks) && statusTasks.map((status) => (
+                            <SelectItem key={status.idStatus} value={status.idStatus.toString()}>
+                              {status.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleEditTask(task)}
+                        onClick={() => setEditTask(task)}
                         className="dark:bg-gray-800 dark:text-white"
                       >
                         <Edit2 className="w-4 h-4 mr-2" />
@@ -422,7 +499,7 @@ function Dashboard() {
                         variant="outline"
                         size="sm"
                         className="text-red-600 hover:text-red-700 dark:bg-gray-800 dark:text-red-400"
-                        onClick={() => handleDeleteTask(task.id)}
+                        onClick={() => handleDeleteTask(task.idSupportTask)}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Eliminar
@@ -456,8 +533,8 @@ function Dashboard() {
                   className="dark:bg-gray-800 dark:text-white"
                 />
                 <Select
-                  value={editTask.priority}
-                  onValueChange={(value) => setEditTask({ ...editTask, priority: value })}
+                  value={editTask.priority.name}
+                  onValueChange={(value) => setEditTask({ ...editTask, priority: { name: value } })}
                 >
                   <SelectTrigger className="dark:bg-gray-800 dark:text-white">
                     <SelectValue placeholder="Prioridad" />
@@ -468,16 +545,53 @@ function Dashboard() {
                     <SelectItem value="baja">Baja</SelectItem>
                   </SelectContent>
                 </Select>
-                <Input
-                  placeholder="Asignar a"
-                  value={editTask.assignedTo}
-                  onChange={(e) => setEditTask({ ...editTask, assignedTo: e.target.value })}
-                  className="dark:bg-gray-800 dark:text-white"
-                />
+                <Select
+                  value={editTask.user.idUser.toString()}
+                  onValueChange={(value) => setEditTask({
+                    ...editTask,
+                    user: { ...editTask.user, idUser: parseInt(value) }
+                  })}
+                >
+                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
+                    <SelectValue placeholder="Asignar a..." />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-gray-800 dark:text-white">
+                    {Array.isArray(users) && users.map((user) => (
+                      <SelectItem key={user.idUser} value={user.idUser.toString()}>
+                        {user.name} {user.firstSurname}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* Agregamos la selección de estado a la ventana de edición también */}
+                <Select
+                  value={editTask.statusTask.idStatus.toString()}
+                  onValueChange={(value) => {
+                    const selectedStatus = statusTasks.find(status => status.idStatus === parseInt(value));
+                    setEditTask({
+                      ...editTask,
+                      statusTask: {
+                        idStatus: parseInt(value),
+                        name: selectedStatus ? selectedStatus.name : editTask.statusTask.name
+                      }
+                    });
+                  }}
+                >
+                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent className="dark:bg-gray-800 dark:text-white">
+                    {Array.isArray(statusTasks) && statusTasks.map((status) => (
+                      <SelectItem key={status.idStatus} value={status.idStatus.toString()}>
+                        {status.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Input
                   type="datetime-local"
-                  value={editTask.deadline}
-                  onChange={(e) => setEditTask({ ...editTask, deadline: e.target.value })}
+                  value={editTask.endTask}
+                  onChange={(e) => setEditTask({ ...editTask, endTask: e.target.value })}
                   className="dark:bg-gray-800 dark:text-white"
                 />
                 <DialogFooter>
