@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
 import { NewTaskModal } from './NewTaskModal';
+import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import {
   Dialog,
@@ -39,19 +40,25 @@ import {
   updateSupportTaskStatus,
   updateSupportTaskAsigment,
 } from '../service/SupportTask';
-import { getStatusTasks } from '../service/Statustask'; // Importamos el servicio para obtener estados
+import { getStatusTasks } from '../service/Statustask';
 import { getAll as getUsers } from '../service/UserAPI';
+import { HubConnectionBuilder } from '@microsoft/signalr';
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
-  const [statusTasks, setStatusTasks] = useState([]); // Estado para almacenar los estados de tareas
+  const navigate = useNavigate();
+  const [statusTasks, setStatusTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const handleTaskClick = (taskId) => {
+    navigate(`/task/${taskId}`);
+  };
+
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
@@ -63,7 +70,89 @@ function Dashboard() {
   });
   const [editTask, setEditTask] = useState(null);
   const [sortBy, setSortBy] = useState('createdAt');
-  const [refreshKey, setRefreshKey] = useState(0); // Añadimos una key para forzar renderizado
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Conexión a SignalR
+  const [connection, setConnection] = useState(null);
+
+  useEffect(() => {
+    // Crear la conexión al Hub de SignalR
+    const newConnection = new HubConnectionBuilder()
+      .withUrl('http://localhost:5272/taskHub')
+      .withAutomaticReconnect()
+      .build();
+
+    setConnection(newConnection);
+  }, []);
+
+  useEffect(() => {
+    if (connection) {
+      // Iniciar la conexión
+      connection.start()
+        .then(() => {
+          console.log('Conectado al Hub de SignalR');
+
+          // Escuchar evento de creación de tareas
+          connection.on('TaskCreated', (task) => {
+            console.log('Nueva tarea creada:', task);
+            // Agregar la nueva tarea a la lista sin recargar todo
+            setTasks(prevTasks => [...prevTasks, task]);
+            toast.info(`Nueva tarea creada: ${task.title}`);
+          });
+
+          // Escuchar eventos de actualización de tareas
+          connection.on('TaskUpdated', (taskId) => {
+            console.log(`Tarea ${taskId} fue actualizada`);
+            // Actualizar la lista de tareas
+            fetchTasks();
+          });
+
+          // Escuchar eventos de reasignación de tareas
+          connection.on('TaskReassigned', (taskId) => {
+            console.log(`Tarea ${taskId} fue reasignada`);
+            // Actualizar la lista de tareas
+            fetchTasks();
+          });
+
+          // Escuchar eventos de eliminación de tareas
+          connection.on('TaskDeleted', (taskId) => {
+            console.log(`Tarea ${taskId} fue eliminada`);
+            // Eliminar la tarea de la lista sin recargar todo
+            setTasks(prevTasks => prevTasks.filter(task => task.idSupportTask !== taskId));
+          });
+
+          // Escuchar eventos de cambio de estado de tareas
+          connection.on('TaskStatusChanged', (taskId, newStatus) => {
+            console.log(`Estado de la tarea ${taskId} cambió a ${newStatus.name}`);
+            // Actualizar el estado de la tarea específica en la lista
+            setTasks(prevTasks => prevTasks.map(task => {
+              if (task.idSupportTask === taskId) {
+                return { ...task, statusTask: newStatus };
+              }
+              return task;
+            }));
+          });
+        })
+        .catch(err => {
+          console.error('Error al conectar al Hub:', err);
+        });
+
+      // Limpiar la conexión al desmontar el componente
+      return () => {
+        connection.stop();
+      };
+    }
+  }, [connection]);
+
+  // Función para obtener las tareas desde la API
+  const fetchTasks = async () => {
+    try {
+      const tasksData = await getSupportTasks();
+      setTasks(tasksData);
+    } catch (error) {
+      console.error('Error al obtener las tareas:', error);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,9 +175,7 @@ function Dashboard() {
     };
 
     fetchData();
-  }, [refreshKey]); // Añadir refreshKey como dependencia
-
-  // Estadísticas de tareas
+  }, [refreshKey]);
   const getTaskStats = () => {
     if (!Array.isArray(tasks)) {
       console.error('Tasks is not an array:', tasks);
@@ -99,7 +186,7 @@ function Dashboard() {
         completadas: 0
       };
     }
-
+  
     return {
       total: tasks.length,
       pendientes: tasks.filter(t => t.statusTask && t.statusTask.name === 'Pendiente').length,
@@ -110,11 +197,17 @@ function Dashboard() {
 
   const stats = getTaskStats();
 
+  // Crear una nueva tarea
   const handleCreateTask = async (task) => {
     try {
       const createdTask = await createSupportTask(task);
-      setTasks([...tasks, createdTask]);
+
+      // Ya no necesitamos actualizar el estado aquí, lo haremos cuando recibamos
+      // la notificación desde SignalR, para asegurar que todos los clientes
+      // tienen la misma información
+
       toast.success('Tarea creada exitosamente.');
+      setIsNewTaskModalOpen(false);
     } catch (error) {
       console.error('Error al crear la tarea:', error);
       toast.error('Error al crear la tarea.');
@@ -140,7 +233,12 @@ function Dashboard() {
     return colors[status.toLowerCase().replace(' ', '_')] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
   };
 
-  // Crear una nueva tarea
+  const getIdColor = (idSupportTask) => {
+    return "bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100";
+  };
+
+
+  // Función de adición de tarea (ya no la necesitamos porque usamos el modal)
   const handleAddTask = async () => {
     if (newTask.title && newTask.description) {
       if (newTask.deadline && new Date(newTask.deadline) < new Date()) {
@@ -148,14 +246,8 @@ function Dashboard() {
         return;
       }
 
-      const handleTaskCreated = (newTask) => {
-        setTasks((prevTasks) => [...prevTasks, newTask]);
-        setRefreshKey((prevKey) => prevKey + 1); // Forzar re-renderizado
-      };
-
       try {
-        const createdTask = await createSupportTask(newTask);
-        setTasks([...tasks, createdTask]);
+        await createSupportTask(newTask);
         setNewTask({
           title: '',
           description: '',
@@ -165,7 +257,7 @@ function Dashboard() {
           category: 'software',
           deadline: ''
         });
-        toast.success('Tarea creada exitosamente.');
+        // No actualizamos las tareas porque SignalR lo hará
       } catch (error) {
         console.error('Error al crear la tarea:', error);
         toast.error('Error al crear la tarea.');
@@ -182,10 +274,7 @@ function Dashboard() {
         idUser: newUserId,
       });
 
-      // En lugar de actualizar solo una tarea, recargamos todas
-      const tasksData = await getSupportTasks();
-      setTasks(tasksData);
-
+      // No es necesario actualizar manualmente, SignalR enviará una notificación
       toast.success('Tarea reasignada exitosamente.');
     } catch (error) {
       console.error('Error al reasignar la tarea:', error);
@@ -202,8 +291,8 @@ function Dashboard() {
       }
 
       try {
-        const updatedTask = await updateSupportTask(editTask.idSupportTask, editTask);
-        setTasks(tasks.map(t => (t.idSupportTask === updatedTask.idSupportTask ? updatedTask : t)));
+        await updateSupportTask(editTask.idSupportTask, editTask);
+        // No necesitamos actualizar el estado, SignalR lo hará
         setEditTask(null);
         toast.success('Tarea actualizada exitosamente.');
       } catch (error) {
@@ -219,7 +308,7 @@ function Dashboard() {
   const handleDeleteTask = async (taskId) => {
     try {
       await deleteSupportTask(taskId);
-      setTasks(tasks.filter(task => task.idSupportTask !== taskId));
+      // No necesitamos actualizar el estado, SignalR lo hará
       toast.success('Tarea eliminada exitosamente.');
     } catch (error) {
       console.error('Error al eliminar la tarea:', error);
@@ -229,40 +318,13 @@ function Dashboard() {
 
   const handleStatusChange = async (taskId, newStatusId) => {
     try {
-      // Conversión a entero para asegurar que el formato es correcto
       const statusIdInt = parseInt(newStatusId);
-      // Llamada a la API con el formato esperado
       await updateSupportTaskStatus(taskId, {
         idStatus: statusIdInt
       });
 
-      // Actualización local del estado después de una operación exitosa
-      setTasks(prevTasks =>
-        prevTasks.map(task => {
-          if (task.idSupportTask === taskId) {
-            // Buscamos el objeto de estado completo para asegurar que tenemos toda la información
-            const selectedStatus = statusTasks.find(status => status.idStatus === statusIdInt);
-
-            return {
-              ...task,
-              statusTask: selectedStatus ? {
-                idStatus: statusIdInt,
-                name: selectedStatus.name
-              } : {
-                idStatus: statusIdInt,
-                name: 'Estado Desconocido' // Valor predeterminado por si no encontramos el estado
-              }
-            };
-          }
-          return task;
-        })
-      );
-
-      // Forzar renderizado
-      // setRefreshKey(prev => prev + 1);
-
+      // No necesitamos actualizar el estado, SignalR lo hará
       toast.success('Estado de la tarea actualizado.');
-
     } catch (error) {
       console.error('Error al actualizar el estado de la tarea:', error);
       toast.error('Error al actualizar el estado de la tarea.');
@@ -273,8 +335,10 @@ function Dashboard() {
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPriority = filterPriority === 'todos' || task.priority.name.toLowerCase() === filterPriority;
-    const matchesStatus = filterStatus === 'todos' || task.statusTask.name.toLowerCase().replace(' ', '_') === filterStatus;
+    const matchesPriority = filterPriority === 'todos' ||
+      (task.priority && task.priority.name.toLowerCase() === filterPriority);
+    const matchesStatus = filterStatus === 'todos' ||
+      (task.statusTask && task.statusTask.name.toLowerCase().replace(' ', '_') === filterStatus);
     return matchesSearch && matchesPriority && matchesStatus;
   });
 
@@ -302,7 +366,6 @@ function Dashboard() {
 
   return (
     <>
-      <ToastContainer />
       <div className="sm:flex sm:justify-between sm:items-center mb-8">
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl md:text-3xl dark:text-blue-400 text-gray-500 font-bold">
@@ -424,7 +487,11 @@ function Dashboard() {
         <div className="col-span-12">
           <div className="grid grid-cols-1 gap-4">
             {sortedTasks.map((task) => (
-              <Card key={`${task.idSupportTask}-${refreshKey}`} className="shadow-sm hover:shadow-md transition-shadow dark:bg-gray-900">
+              <Card
+                key={`${task.idSupportTask}-${task.updatedAt || task.createdAt}`}
+                className="shadow-sm hover:shadow-md transition-shadow dark:bg-gray-900 cursor-pointer"
+                onClick={() => handleTaskClick(task.idSupportTask)}
+              >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-xl font-bold dark:text-white">{task.title}</CardTitle>
                   <div className="flex gap-2">
@@ -433,6 +500,9 @@ function Dashboard() {
                     </Badge>
                     <Badge className={getStatusColor(task.statusTask.name)}>
                       {task.statusTask.name.toUpperCase()}
+                    </Badge>
+                    <Badge className={getIdColor(task.idSupportTask)}>
+                      {'#' + task.idSupportTask}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -489,7 +559,10 @@ function Dashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setEditTask(task)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Evita que el clic en el botón propague el evento a la tarjeta
+                          setEditTask(task);
+                        }}
                         className="dark:bg-gray-800 dark:text-white"
                       >
                         <Edit2 className="w-4 h-4 mr-2" />
@@ -499,7 +572,10 @@ function Dashboard() {
                         variant="outline"
                         size="sm"
                         className="text-red-600 hover:text-red-700 dark:bg-gray-800 dark:text-red-400"
-                        onClick={() => handleDeleteTask(task.idSupportTask)}
+                        onClick={(e) => {
+                          e.stopPropagation(); // Evita que el clic en el botón propague el evento a la tarjeta
+                          handleDeleteTask(task.idSupportTask);
+                        }}
                       >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Eliminar
@@ -603,6 +679,9 @@ function Dashboard() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Toast Container para notificaciones */}
+
       </div>
     </>
   );

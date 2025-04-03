@@ -18,6 +18,7 @@ import TablePayment from "../pages/Payment/TablePayment";
 import AsistenciaQr from "../pages/asistencia/AsistenciaQr";
 import ObtenerAsistencia from "../pages/asistencia/obtenerAsistencia";
 import Profile from "../pages/users/Profile";
+import TaskDetailView from "../pages/TaskDetail/TaskDetailView";
 
 export default function PrivateRoutes() {
   return (
@@ -36,6 +37,7 @@ export default function PrivateRoutes() {
         <Route path="/payment" element={<TablePayment/>} />
         <Route path="/asistencia" element={<AsistenciaQr/>} />
         <Route path="/obtenerAsistencia" element={<ObtenerAsistencia/>} />
+        <Route path="/task/:id" element={<TaskDetailView />} />
         <Route path="/profile" element={<Profile/>} />
       </Route>
       <Route path="*" element={<Navigate to='/dashboard' replace />} />

@@ -32,7 +32,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     category: 'Software',
     idUser: userInfo.id,
     idCompany: null,
-    idCompanyEmployee: null,
+    nameEmployeeCompany: null,
     idPriority: null,
     idStatus: null,
     solution: '',
@@ -51,7 +51,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         setCompanies(Array.isArray(companiesData.data) ? companiesData.data : []);
         setPriorities(Array.isArray(prioritiesData.data) ? prioritiesData.data : []);
         setStatusTasks(Array.isArray(statusData.data) ? statusData.data : []);
-        
+
         if (usersData && usersData.success && Array.isArray(usersData.data)) {
           setUsers(usersData.data);
         } else {
@@ -78,7 +78,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       const fetchCompanyEmployees = async () => {
         try {
           const employeesData = await getCompanyEmployeesByCompanyId(selectedCompany);
-          
+
           // Verificar si es un solo empleado o un array
           if (employeesData && employeesData.success) {
             if (Array.isArray(employeesData.data)) {
@@ -104,21 +104,22 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       setCompanyEmployees([]);
     }
   }, [selectedCompany]);
+
   const handleCreateTask = async () => {
-    if (!newTask.title || !newTask.description || !newTask.idCompany || !newTask.idCompanyEmployee || !newTask.idPriority || !newTask.idStatus || !newTask.idUser) {
+    if (!newTask.title || !newTask.description || !newTask.idCompany || !newTask.idPriority || !newTask.idStatus || !newTask.idUser) {
       toast.error('Por favor, complete todos los campos requeridos.');
       return;
     }
-  
+
     const taskToCreate = {
       ...newTask,
       endTask: enableManualEndTask ? newTask.endTask : new Date().toISOString(),
     };
-  
+
     try {
       setIsSubmitting(true);
       const result = await createSupportTask(taskToCreate);
-      
+
       if (result && result.success) {
         toast.success('Tarea creada con éxito.');
         if (onTaskCreated) {
@@ -153,76 +154,77 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       setIsSubmitting(false);
     }
   };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-6 dark:bg-gray-900">
+      <DialogContent className="max-w-4xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold dark:text-white">Crear Nueva Tarea</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Crear Nueva Tarea</DialogTitle>
         </DialogHeader>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           {/* Primera columna */}
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1 block dark:text-gray-300">Título</label>
+              <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Título</label>
               <Input
                 placeholder="Título de la tarea"
                 value={newTask.title}
                 onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                className="dark:bg-gray-800 dark:text-white"
+                className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
               />
             </div>
-            
+
             <div>
-              <label className="text-sm font-medium mb-1 block dark:text-gray-300">Descripción</label>
+              <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Descripción</label>
               <Textarea
                 placeholder="Descripción"
                 value={newTask.description}
                 onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                className="min-h-32 dark:bg-gray-800 dark:text-white"
+                className="min-h-32 bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
               />
             </div>
-            
+
             <div>
-              <label className="text-sm font-medium mb-1 block dark:text-gray-300">Solución</label>
+              <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Solución</label>
               <Textarea
                 placeholder="Solución"
                 value={newTask.solution}
                 onChange={(e) => setNewTask({ ...newTask, solution: e.target.value })}
-                className="min-h-24 dark:bg-gray-800 dark:text-white"
+                className="min-h-24 bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
               />
             </div>
           </div>
-          
+
           {/* Segunda columna */}
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block dark:text-gray-300">Categoría</label>
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Categoría</label>
                 <Select
                   value={newTask.category}
                   onValueChange={(value) => setNewTask({ ...newTask, category: value })}
                 >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
+                  <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Categoría" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
+                  <SelectContent className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectItem value="Software">Software</SelectItem>
                     <SelectItem value="Hardware">Hardware</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
-                <label className="text-sm font-medium mb-1 block dark:text-gray-300">Usuario</label>
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Usuario</label>
                 <Select
                   value={newTask.idUser?.toString()}
                   onValueChange={(value) => setNewTask({ ...newTask, idUser: parseInt(value) })}
                 >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
+                  <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Usuario" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
+                  <SelectContent className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     {Array.isArray(users) ? users.map((user) => (
                       <SelectItem key={user.idUser} value={user.idUser.toString()}>
                         {user.name} {user.firstSurname}
@@ -232,10 +234,10 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 </Select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block dark:text-gray-300">Compañía</label>
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Compañía</label>
                 <Select
                   value={newTask.idCompany?.toString()}
                   onValueChange={(value) => {
@@ -243,10 +245,10 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                     setNewTask({ ...newTask, idCompany: parseInt(value) });
                   }}
                 >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
+                  <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Compañía" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
+                  <SelectContent className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     {Array.isArray(companies) ? companies.map((company) => (
                       <SelectItem key={company.idCompany} value={company.idCompany.toString()}>
                         {company.companyComercialName}
@@ -255,39 +257,28 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
-                <label className="text-sm font-medium mb-1 block dark:text-gray-300">Empleado</label>
-                <Select
-                  value={newTask.idCompanyEmployee?.toString()}
-                  onValueChange={(value) => setNewTask({ ...newTask, idCompanyEmployee: parseInt(value) })}
-                  disabled={!selectedCompany}
-                >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
-                    <SelectValue placeholder="Empleado" />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
-                    {Array.isArray(companyEmployees) ? companyEmployees.map((employee) => (
-                      <SelectItem key={employee.idCompanyEmployee} value={employee.idCompanyEmployee.toString()}>
-                        {employee.nameEmployee} {employee.firstSurname}
-                      </SelectItem>
-                    )) : <SelectItem value="">No hay empleados disponibles</SelectItem>}
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Empleado</label>
+                <Input
+                  placeholder="Empleado de la empresa"
+                  value={newTask.nameEmployeeCompany}
+                  onChange={(e) => setNewTask({ ...newTask, nameEmployeeCompany: e.target.value })}
+                  className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                />
               </div>
             </div>
-            
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium mb-1 block dark:text-gray-300">Prioridad</label>
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Prioridad</label>
                 <Select
                   value={newTask.idPriority?.toString()}
                   onValueChange={(value) => setNewTask({ ...newTask, idPriority: parseInt(value) })}
                 >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
+                  <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Prioridad" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
+                  <SelectContent className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     {Array.isArray(priorities) ? priorities.map((priority) => (
                       <SelectItem key={priority.idPriority} value={priority.idPriority.toString()}>
                         {priority.name}
@@ -296,17 +287,17 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
-                <label className="text-sm font-medium mb-1 block dark:text-gray-300">Estado</label>
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Estado</label>
                 <Select
                   value={newTask.idStatus?.toString()}
                   onValueChange={(value) => setNewTask({ ...newTask, idStatus: parseInt(value) })}
                 >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
+                  <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
+                  <SelectContent className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     {Array.isArray(statusTasks) ? statusTasks.map((status) => (
                       <SelectItem key={status.idStatus} value={status.idStatus.toString()}>
                         {status.name}
@@ -316,40 +307,40 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 </Select>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-2 mt-4">
               <Checkbox
                 id="enableManualEndTask"
                 checked={enableManualEndTask}
                 onCheckedChange={(checked) => setEnableManualEndTask(checked)}
               />
-              <label htmlFor="enableManualEndTask" className="text-sm font-medium leading-none dark:text-white">
+              <label htmlFor="enableManualEndTask" className="text-sm font-medium leading-none text-gray-700 dark:text-white">
                 Establecer fecha de finalización manual
               </label>
             </div>
-            
+
             {enableManualEndTask && (
               <div>
-                <label className="text-sm font-medium mb-1 block dark:text-gray-300">Fecha de finalización</label>
+                <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Fecha de finalización</label>
                 <Input
                   type="datetime-local"
                   value={newTask.endTask}
                   onChange={(e) => setNewTask({ ...newTask, endTask: e.target.value })}
-                  className="dark:bg-gray-800 dark:text-white"
+                  className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                 />
               </div>
             )}
           </div>
         </div>
-        
+
         <DialogFooter className="mt-6">
           <div className="flex gap-2 w-full justify-end">
-            <Button variant="outline" onClick={onClose} className="w-32" disabled={isSubmitting}>
+            <Button variant="outline" onClick={onClose} className="w-32 bg-white text-gray-800 border-gray-300 hover:bg-gray-100 dark:bg-gray-800 dark:text-white dark:border-gray-700 dark:hover:bg-gray-700" disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleCreateTask} 
-              className="w-32" 
+            <Button
+              onClick={handleCreateTask}
+              className="w-32"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Creando...' : 'Crear Tarea'}
