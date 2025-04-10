@@ -17,10 +17,17 @@ export default defineConfig({
     include: [
       '@tailwindConfig',
     ]
-  }, 
+  },
   build: {
     commonjsOptions: {
       transformMixedEsModules: true,
     }
-  } 
+  },
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: true,
+    // Opcional: habilitar si quieres que abra automáticamente en el navegador
+    open: false
+  }
 })

@@ -10,13 +10,11 @@ import { getCompanyEmployeesByCompanyId } from '../service/CompanyEmployee';
 import { getPriorities } from '../service/Priority';
 import { getStatusTasks } from '../service/Statustask';
 import { getAll as getAllUsers } from '../service/UserAPI';
-import { createSupportTask } from '../service/SupportTask';
-import { useUserContext } from '../context/UserContext';
+import { updateSupportTask } from '../service/SupportTask';
 import { toast } from 'react-toastify';
 import { isAxiosError } from 'axios';
 
-export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
-  const { userInfo } = useUserContext();
+export const EditTaskModal = ({ isOpen, onClose, onTaskUpdated, task }) => {
   const [companies, setCompanies] = useState([]);
   const [companyEmployees, setCompanyEmployees] = useState([]);
   const [priorities, setPriorities] = useState([]);
@@ -25,20 +23,29 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [enableManualEndTask, setEnableManualEndTask] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editTask, setEditTask] = useState(null);
 
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    category: 'Software',
-    idUser: userInfo.id,
-    idCompany: null,
-    nameEmployeeCompany: null,
-    idPriority: null,
-    idStatus: null,
-    solution: '',
-    startTask: new Date().toISOString(),
-    endTask: new Date().toISOString(),
-  });
+  useEffect(() => {
+    if (task) {
+      setEditTask({
+        ...task,
+        idUser: task.user?.idUser || task.idUser,
+        idCompany: task.idCompany,
+        idPriority: task.priority?.idPriority || task.idPriority,
+        idStatus: task.statusTask?.idStatus || task.idStatus,
+      });
+      
+      // Si ya tiene fecha de finalización, habilitar la edición manual
+      if (task.endTask) {
+        setEnableManualEndTask(true);
+      }
+      
+      // Establecer el valor de selectedCompany
+      if (task.idCompany) {
+        setSelectedCompany(task.idCompany);
+      }
+    }
+  }, [task]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -105,77 +112,71 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     }
   }, [selectedCompany]);
 
-  const handleCreateTask = async () => {
-    if (!newTask.title || !newTask.description || !newTask.idCompany || !newTask.idPriority || !newTask.idStatus || !newTask.idUser) {
+  // Efecto para actualizar endTask cuando cambia el estado
+  useEffect(() => {
+    if (!editTask) return;
+    
+    // Si se selecciona el estado "Completado" (ID 3), actualizar la fecha de finalización
+    // a menos que el usuario haya elegido establecerla manualmente
+    if (editTask.idStatus === 3 && !enableManualEndTask) {
+      setEditTask({ ...editTask, endTask: new Date().toISOString() });
+    } 
+    // Si no es "Completado" y no está habilitada la fecha manual, establecer como null
+    else if (editTask.idStatus !== 3 && !enableManualEndTask) {
+      setEditTask({ ...editTask, endTask: null });
+    }
+  }, [editTask?.idStatus, enableManualEndTask]);
+
+  const handleUpdateTask = async () => {
+    if (!editTask) return;
+    
+    if (!editTask.title || !editTask.description || !editTask.idCompany || !editTask.idPriority || !editTask.idStatus || !editTask.idUser) {
       toast.error('Por favor, complete todos los campos requeridos.');
       return;
     }
-  
-    let endTaskValue = null;
-  
-    // Buscar el nombre del estado seleccionado para tomar decisiones
-    const selectedStatus = statusTasks.find(status => status.idStatus === newTask.idStatus);
-  
-    if (selectedStatus) {
-      if (selectedStatus.name.toLowerCase() === 'completada') {
-        endTaskValue = newTask.startTask;
-      } else if (selectedStatus.name.toLowerCase() === 'pendiente') {
-        endTaskValue = null;
-      } else {
-        // En caso de otros estados, si quieres dejar el endTask como editable manualmente
-        endTaskValue = enableManualEndTask ? newTask.endTask : null;
-      }
-    }
-  
-    const taskToCreate = {
-      ...newTask,
-      endTask: endTaskValue,
+
+    const taskToUpdate = {
+      ...editTask,
+      // Si se estableció manualmente una fecha de finalización, usamos esa
+      // Si el estado es "Completado" (ID 3), establecemos la fecha actual
+      // De lo contrario, mantenemos endTask como null
+      endTask: enableManualEndTask 
+              ? editTask.endTask 
+              : (editTask.idStatus === 3 ? new Date().toISOString() : null),
     };
-  
+
     try {
       setIsSubmitting(true);
-      const result = await createSupportTask(taskToCreate);
-  
+      const result = await updateSupportTask(editTask.idSupportTask, taskToUpdate);
+
       if (result && result.success) {
-        toast.success('Tarea creada con éxito.');
-        if (onTaskCreated) {
-          onTaskCreated(result.data);
+        toast.success('Tarea actualizada con éxito.');
+        if (onTaskUpdated) {
+          onTaskUpdated(result.data);
         }
         onClose();
-        setNewTask({
-          title: '',
-          description: '',
-          category: 'Software',
-          idUser: userInfo.id,
-          idCompany: null,
-          nameEmployeeCompany: null,
-          idPriority: null,
-          idStatus: null,
-          solution: '',
-          startTask: new Date().toISOString(),
-          endTask: new Date().toISOString(),
-        });
       } else {
-        toast.error(result?.message || 'Error al crear la tarea.');
+        toast.error(result?.message || 'Error al actualizar la tarea.');
       }
     } catch (error) {
       if (isAxiosError(error)) {
         toast.error(`Error: ${error.response?.data?.message || error.message}`);
       } else {
-        toast.error('Error inesperado al crear la tarea.');
+        toast.error('Error inesperado al actualizar la tarea.');
       }
-      console.error('Error creating task:', error);
+      console.error('Error updating task:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
+  if (!editTask) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Crear Nueva Tarea</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Editar Tarea #{editTask.idSupportTask}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -185,8 +186,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Título</label>
               <Input
                 placeholder="Título de la tarea"
-                value={newTask.title}
-                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                value={editTask.title || ''}
+                onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
                 className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
               />
             </div>
@@ -195,8 +196,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Descripción</label>
               <Textarea
                 placeholder="Descripción"
-                value={newTask.description}
-                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                value={editTask.description || ''}
+                onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
                 className="min-h-32 bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
               />
             </div>
@@ -205,8 +206,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Solución</label>
               <Textarea
                 placeholder="Solución"
-                value={newTask.solution}
-                onChange={(e) => setNewTask({ ...newTask, solution: e.target.value })}
+                value={editTask.solution || ''}
+                onChange={(e) => setEditTask({ ...editTask, solution: e.target.value })}
                 className="min-h-24 bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
               />
             </div>
@@ -218,8 +219,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <div>
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Categoría</label>
                 <Select
-                  value={newTask.category}
-                  onValueChange={(value) => setNewTask({ ...newTask, category: value })}
+                  value={editTask.category || 'Software'}
+                  onValueChange={(value) => setEditTask({ ...editTask, category: value })}
                 >
                   <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Categoría" />
@@ -234,8 +235,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <div>
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Usuario</label>
                 <Select
-                  value={newTask.idUser?.toString()}
-                  onValueChange={(value) => setNewTask({ ...newTask, idUser: parseInt(value) })}
+                  value={editTask.idUser?.toString() || ''}
+                  onValueChange={(value) => setEditTask({ ...editTask, idUser: parseInt(value) })}
                 >
                   <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Usuario" />
@@ -255,10 +256,10 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <div>
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Compañía</label>
                 <Select
-                  value={newTask.idCompany?.toString()}
+                  value={editTask.idCompany?.toString() || ''}
                   onValueChange={(value) => {
                     setSelectedCompany(parseInt(value));
-                    setNewTask({ ...newTask, idCompany: parseInt(value) });
+                    setEditTask({ ...editTask, idCompany: parseInt(value) });
                   }}
                 >
                   <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
@@ -278,8 +279,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Empleado</label>
                 <Input
                   placeholder="Empleado de la empresa"
-                  value={newTask.nameEmployeeCompany}
-                  onChange={(e) => setNewTask({ ...newTask, nameEmployeeCompany: e.target.value })}
+                  value={editTask.nameEmployeeCompany || ''}
+                  onChange={(e) => setEditTask({ ...editTask, nameEmployeeCompany: e.target.value })}
                   className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                 />
               </div>
@@ -288,8 +289,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <div>
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Prioridad</label>
                 <Select
-                  value={newTask.idPriority?.toString()}
-                  onValueChange={(value) => setNewTask({ ...newTask, idPriority: parseInt(value) })}
+                  value={editTask.idPriority?.toString() || ''}
+                  onValueChange={(value) => setEditTask({ ...editTask, idPriority: parseInt(value) })}
                 >
                   <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Prioridad" />
@@ -307,8 +308,8 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               <div>
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Estado</label>
                 <Select
-                  value={newTask.idStatus?.toString()}
-                  onValueChange={(value) => setNewTask({ ...newTask, idStatus: parseInt(value) })}
+                  value={editTask.idStatus?.toString() || ''}
+                  onValueChange={(value) => setEditTask({ ...editTask, idStatus: parseInt(value) })}
                 >
                   <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
                     <SelectValue placeholder="Estado" />
@@ -340,12 +341,13 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Fecha de finalización</label>
                 <Input
                   type="datetime-local"
-                  value={newTask.endTask}
-                  onChange={(e) => setNewTask({ ...newTask, endTask: e.target.value })}
+                  value={editTask.endTask || ''}
+                  onChange={(e) => setEditTask({ ...editTask, endTask: e.target.value })}
                   className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
                 />
               </div>
             )}
+        
           </div>
         </div>
 
@@ -355,11 +357,11 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
               Cancelar
             </Button>
             <Button
-              onClick={handleCreateTask}
+              onClick={handleUpdateTask}
               className="w-32"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Creando...' : 'Crear Tarea'}
+              {isSubmitting ? 'Actualizando...' : 'Actualizar'}
             </Button>
           </div>
         </DialogFooter>

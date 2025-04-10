@@ -19,6 +19,7 @@ import AsistenciaQr from "../pages/asistencia/AsistenciaQr";
 import ObtenerAsistencia from "../pages/asistencia/obtenerAsistencia";
 import Profile from "../pages/users/Profile";
 import TaskDetailView from "../pages/TaskDetail/TaskDetailView";
+import ProductivityDashboard from "../pages/TaskDetail/ProductivityDashboard";
 
 export default function PrivateRoutes() {
   return (
@@ -39,6 +40,7 @@ export default function PrivateRoutes() {
         <Route path="/obtenerAsistencia" element={<ObtenerAsistencia/>} />
         <Route path="/task/:id" element={<TaskDetailView />} />
         <Route path="/profile" element={<Profile/>} />
+        <Route path="/productivity" element={<ProductivityDashboard />} />
       </Route>
       <Route path="*" element={<Navigate to='/dashboard' replace />} />
     </Routes>

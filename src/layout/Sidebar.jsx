@@ -147,7 +147,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
           >
             <NavLink
               end
-              to="/dashboard"
+              to="/productivity"
               className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("dashboard")
                   ? ""
                   : "hover:text-gray-900 dark:hover:text-white"
@@ -155,8 +155,8 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
             >
               <div className="flex items-center">
                 <svg
-                  className={`shrink-0 fill-current ${pathname === "/dashboard" ||
-                      pathname.includes("dashboard")
+                  className={`shrink-0 fill-current ${pathname === "/productivity" ||
+                      pathname.includes("productivity")
                       ? "text-blue-500"
                       : "text-blue-500 dark:text-blue-500"
                     }`}
@@ -183,7 +183,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
               >
                 <NavLink
                   end
-                  to="/task"
+                  to="/dashboard"
                   className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("musclegroup")
                       ? ""
                       : "hover:text-gray-900 dark:hover:text-white"

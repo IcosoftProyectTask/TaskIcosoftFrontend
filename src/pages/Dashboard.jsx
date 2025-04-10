@@ -3,9 +3,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Textarea } from '../components/ui/Textarea';
-import { NewTaskModal } from './NewTaskModal';
-import { useNavigate } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import {
   Dialog,
@@ -13,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from '../components/ui/dialog';
 import {
   CheckCircle,
@@ -21,7 +17,6 @@ import {
   AlertCircle,
   User,
   Search,
-  Filter,
   Plus,
   Edit2,
   Trash2,
@@ -43,6 +38,10 @@ import {
 import { getStatusTasks } from '../service/Statustask';
 import { getAll as getUsers } from '../service/UserAPI';
 import { HubConnectionBuilder } from '@microsoft/signalr';
+import LoadingState from '../components/common/LoadingState';
+import { useNavigate } from 'react-router-dom';
+import { NewTaskModal } from './NewTaskModal';
+import { EditTaskModal } from './EditTaskModal'; // Importar el nuevo componente
 
 function Dashboard() {
   const [tasks, setTasks] = useState([]);
@@ -52,6 +51,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
+  const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false); // Nuevo estado para controlar el modal de edición
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPriority, setFilterPriority] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
@@ -59,18 +59,49 @@ function Dashboard() {
     navigate(`/task/${taskId}`);
   };
 
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    priority: 'media',
-    status: 'pendiente',
-    assignedTo: '',
-    category: 'software',
-    deadline: ''
-  });
+  // Mapeo de IDs a nombres para prioridades
+  const priorityNamesMap = {
+    1: "Alta",
+    2: "Media", 
+    3: "Baja"
+  };
+
+  // Mapeo de IDs a nombres para estados
+  const statusNamesMap = {
+    1: "Pendiente",
+    2: "En Progreso",
+    3: "Completado"
+  };
+
+  // Estado para la tarea que se está editando
   const [editTask, setEditTask] = useState(null);
   const [sortBy, setSortBy] = useState('createdAt');
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Función para asegurar que la tarea tenga la estructura correcta
+  const ensureTaskStructure = (task) => {
+    if (!task) return null;
+    
+    return {
+      ...task,
+      // Asegurar que priority exista
+      priority: task.priority || {
+        idPriority: task.idPriority || 1,
+        name: task.idPriority ? priorityNamesMap[task.idPriority] || "Media" : "Media"
+      },
+      // Asegurar que statusTask exista
+      statusTask: task.statusTask || {
+        idStatus: task.idStatus || 1,
+        name: task.idStatus ? statusNamesMap[task.idStatus] || "Pendiente" : "Pendiente"
+      },
+      // Asegurar que user exista
+      user: task.user || {
+        idUser: task.idUser || 1,
+        name: "Usuario",
+        firstSurname: ""
+      }
+    };
+  };
 
   // Conexión a SignalR
   const [connection, setConnection] = useState(null);
@@ -94,10 +125,14 @@ function Dashboard() {
 
           // Escuchar evento de creación de tareas
           connection.on('TaskCreated', (task) => {
-            console.log('Nueva tarea creada:', task);
-            // Agregar la nueva tarea a la lista sin recargar todo
-            setTasks(prevTasks => [...prevTasks, task]);
-            toast.info(`Nueva tarea creada: ${task.title}`);
+            console.log('Nueva tarea creada (original):', task);
+            
+            // Transformar la tarea para asegurar que tenga la estructura correcta
+            const transformedTask = ensureTaskStructure(task);
+            console.log('Nueva tarea transformada:', transformedTask);
+            
+            // Agregar la tarea transformada al estado
+            setTasks(prevTasks => [...prevTasks, transformedTask]);
           });
 
           // Escuchar eventos de actualización de tareas
@@ -148,7 +183,9 @@ function Dashboard() {
   const fetchTasks = async () => {
     try {
       const tasksData = await getSupportTasks();
-      setTasks(tasksData);
+      // Aplicar ensureTaskStructure a cada tarea
+      const safeTasksData = tasksData.map(task => ensureTaskStructure(task));
+      setTasks(safeTasksData);
     } catch (error) {
       console.error('Error al obtener las tareas:', error);
     }
@@ -162,7 +199,10 @@ function Dashboard() {
         const usersData = await getUsers();
         const statusData = await getStatusTasks();
 
-        setTasks(tasksData);
+        // Aplicar ensureTaskStructure a cada tarea
+        const safeTasksData = tasksData.map(task => ensureTaskStructure(task));
+        setTasks(safeTasksData);
+        
         setUsers(usersData.data);
         setStatusTasks(statusData.data);
         setError(null);
@@ -176,6 +216,7 @@ function Dashboard() {
 
     fetchData();
   }, [refreshKey]);
+  
   const getTaskStats = () => {
     if (!Array.isArray(tasks)) {
       console.error('Tasks is not an array:', tasks);
@@ -201,17 +242,20 @@ function Dashboard() {
   const handleCreateTask = async (task) => {
     try {
       const createdTask = await createSupportTask(task);
-
-      // Ya no necesitamos actualizar el estado aquí, lo haremos cuando recibamos
-      // la notificación desde SignalR, para asegurar que todos los clientes
-      // tienen la misma información
-
       toast.success('Tarea creada exitosamente.');
       setIsNewTaskModalOpen(false);
     } catch (error) {
       console.error('Error al crear la tarea:', error);
       toast.error('Error al crear la tarea.');
     }
+  };
+
+  // Actualizar una tarea (con el nuevo componente)
+  const handleTaskUpdated = () => {
+    // No necesitamos hacer nada aquí porque SignalR actualizará la lista
+   // toast.success('Tarea actualizada exitosamente.');
+    setIsEditTaskModalOpen(false);
+    setEditTask(null);
   };
 
   // Colores para prioridades y estados
@@ -221,7 +265,7 @@ function Dashboard() {
       media: "bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100",
       baja: "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
     };
-    return colors[priority.toLowerCase()] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
+    return colors[priority?.toLowerCase()] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
   };
 
   const getStatusColor = (status) => {
@@ -230,41 +274,11 @@ function Dashboard() {
       en_progreso: "bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100",
       completado: "bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100"
     };
-    return colors[status.toLowerCase().replace(' ', '_')] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
+    return colors[status?.toLowerCase()?.replace(' ', '_')] || "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
   };
 
   const getIdColor = (idSupportTask) => {
     return "bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-100";
-  };
-
-
-  // Función de adición de tarea (ya no la necesitamos porque usamos el modal)
-  const handleAddTask = async () => {
-    if (newTask.title && newTask.description) {
-      if (newTask.deadline && new Date(newTask.deadline) < new Date()) {
-        toast.error('La fecha límite no puede ser anterior a la fecha actual.');
-        return;
-      }
-
-      try {
-        await createSupportTask(newTask);
-        setNewTask({
-          title: '',
-          description: '',
-          priority: 'media',
-          status: 'pendiente',
-          assignedTo: '',
-          category: 'software',
-          deadline: ''
-        });
-        // No actualizamos las tareas porque SignalR lo hará
-      } catch (error) {
-        console.error('Error al crear la tarea:', error);
-        toast.error('Error al crear la tarea.');
-      }
-    } else {
-      toast.error('Por favor, complete todos los campos requeridos.');
-    }
   };
 
   // Reasignar una tarea
@@ -279,28 +293,6 @@ function Dashboard() {
     } catch (error) {
       console.error('Error al reasignar la tarea:', error);
       toast.error('Error al reasignar la tarea.');
-    }
-  };
-
-  // Actualizar una tarea
-  const handleUpdateTask = async () => {
-    if (editTask.title && editTask.description) {
-      if (editTask.deadline && new Date(editTask.deadline) < new Date()) {
-        toast.error('La fecha límite no puede ser anterior a la fecha actual.');
-        return;
-      }
-
-      try {
-        await updateSupportTask(editTask.idSupportTask, editTask);
-        // No necesitamos actualizar el estado, SignalR lo hará
-        setEditTask(null);
-        toast.success('Tarea actualizada exitosamente.');
-      } catch (error) {
-        console.error('Error al actualizar la tarea:', error);
-        toast.error('Error al actualizar la tarea.');
-      }
-    } else {
-      toast.error('Por favor, complete todos los campos requeridos.');
     }
   };
 
@@ -319,10 +311,18 @@ function Dashboard() {
   const handleStatusChange = async (taskId, newStatusId) => {
     try {
       const statusIdInt = parseInt(newStatusId);
-      await updateSupportTaskStatus(taskId, {
-        idStatus: statusIdInt
-      });
-
+      const taskToUpdate = { idStatus: statusIdInt };
+      
+      // Si el estado nuevo es "Completado" (ID 3), actualizar la fecha de finalización
+      if (statusIdInt === 3) {
+        taskToUpdate.endTask = new Date().toISOString();
+      } else {
+        // Si el estado no es "Completado", establecer endTask como null
+        taskToUpdate.endTask = null;
+      }
+      
+      await updateSupportTaskStatus(taskId, taskToUpdate);
+  
       // No necesitamos actualizar el estado, SignalR lo hará
       toast.success('Estado de la tarea actualizado.');
     } catch (error) {
@@ -331,26 +331,52 @@ function Dashboard() {
     }
   };
 
-  // Filtrar y ordenar tareas
+  // Filtrar y ordenar tareas con manejo seguro de propiedades
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPriority = filterPriority === 'todos' ||
-      (task.priority && task.priority.name.toLowerCase() === filterPriority);
-    const matchesStatus = filterStatus === 'todos' ||
-      (task.statusTask && task.statusTask.name.toLowerCase().replace(' ', '_') === filterStatus);
+    if (!task) return false;
+  
+    // Verificar si el término de búsqueda comienza con # para búsqueda exclusiva por ID
+    if (searchTerm.startsWith('#')) {
+      // Extraer el número después de #
+      const idToSearch = searchTerm.substring(1);
+      // Comparar solo con el ID de la tarea
+      return String(task.idSupportTask || "").includes(idToSearch);
+    }
+  
+    // Búsqueda normal en título, descripción e ID
+    const searchTermLower = searchTerm.toLowerCase();
+    const matchesSearch = 
+      (task.title?.toLowerCase() || "").includes(searchTermLower) ||
+      (task.description?.toLowerCase() || "").includes(searchTermLower) ||
+      String(task.idSupportTask || "").includes(searchTermLower);
+    
+    // El resto de la lógica de filtrado se mantiene igual
+    const matchesPriority = 
+      filterPriority === 'todos' ||
+      (task.priority?.name?.toLowerCase() || "") === filterPriority;
+    
+    const matchesStatus = 
+      filterStatus === 'todos' ||
+      (task.statusTask?.name?.toLowerCase().replace(' ', '_') || "") === filterStatus;
+    
     return matchesSearch && matchesPriority && matchesStatus;
   });
 
   const sortedTasks = filteredTasks.sort((a, b) => {
+    if (!a || !b) return 0;
+    
     if (sortBy === 'createdAt') {
-      return new Date(b.createdAt) - new Date(a.createdAt);
+      return new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now());
     } else if (sortBy === 'priority') {
       const priorityOrder = { alta: 3, media: 2, baja: 1 };
-      return priorityOrder[b.priority.name.toLowerCase()] - priorityOrder[a.priority.name.toLowerCase()];
+      const aPriorityName = (a.priority?.name || "media").toLowerCase();
+      const bPriorityName = (b.priority?.name || "media").toLowerCase();
+      return priorityOrder[bPriorityName] - priorityOrder[aPriorityName];
     } else if (sortBy === 'status') {
       const statusOrder = { pendiente: 3, en_progreso: 2, completado: 1 };
-      return statusOrder[b.statusTask.name.toLowerCase().replace(' ', '_')] - statusOrder[a.statusTask.name.toLowerCase().replace(' ', '_')];
+      const aStatusName = (a.statusTask?.name || "pendiente").toLowerCase().replace(' ', '_');
+      const bStatusName = (b.statusTask?.name || "pendiente").toLowerCase().replace(' ', '_');
+      return statusOrder[bStatusName] - statusOrder[aStatusName];
     }
     return 0;
   });
@@ -361,8 +387,17 @@ function Dashboard() {
     return date.toLocaleString();
   };
 
-  if (loading) return <div>Cargando...</div>;
-  if (error) return <div>{error}</div>;
+  if (loading) {
+    return <LoadingState />;
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-red-600 dark:text-red-400">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -385,6 +420,17 @@ function Dashboard() {
             onCreateTask={handleCreateTask}
           />
         </Dialog>
+        
+        {/* Modal de edición de tarea (separado del Dialog) */}
+        <EditTaskModal
+          isOpen={isEditTaskModalOpen}
+          onClose={() => {
+            setIsEditTaskModalOpen(false);
+            setEditTask(null);
+          }}
+          task={editTask}
+          onTaskUpdated={handleTaskUpdated}
+        />
       </div>
 
       <div className="grid grid-cols-12 gap-6">
@@ -495,11 +541,11 @@ function Dashboard() {
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-xl font-bold dark:text-white">{task.title}</CardTitle>
                   <div className="flex gap-2">
-                    <Badge className={getPriorityColor(task.priority.name)}>
-                      {task.priority.name.toUpperCase()}
+                    <Badge className={getPriorityColor(task.priority?.name)}>
+                      {(task.priority?.name || "Media").toUpperCase()}
                     </Badge>
-                    <Badge className={getStatusColor(task.statusTask.name)}>
-                      {task.statusTask.name.toUpperCase()}
+                    <Badge className={getStatusColor(task.statusTask?.name)}>
+                      {(task.statusTask?.name || "Pendiente").toUpperCase()}
                     </Badge>
                     <Badge className={getIdColor(task.idSupportTask)}>
                       {'#' + task.idSupportTask}
@@ -512,7 +558,7 @@ function Dashboard() {
                     <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                       <div className="flex items-center gap-1">
                         <User size={16} />
-                        <span>{task.user.name} {task.user.firstSurname}</span>
+                        <span>{task.user?.name || "Usuario"} {task.user?.firstSurname || ""}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock size={16} />
@@ -525,43 +571,50 @@ function Dashboard() {
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {/* Campo para reasignar tarea */}
-                      <Select
-                        value={task.user.idUser.toString()}
-                        onValueChange={(value) => handleReassignTask(task.idSupportTask, parseInt(value))}
-                      >
-                        <SelectTrigger className="w-[200px] dark:bg-gray-800 dark:text-white">
-                          <SelectValue placeholder="Asignar a..." />
-                        </SelectTrigger>
-                        <SelectContent className="dark:bg-gray-800 dark:text-white">
-                          {Array.isArray(users) && users.map((user) => (
-                            <SelectItem key={user.idUser} value={user.idUser.toString()}>
-                              {user.name} {user.firstSurname}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={task.user?.idUser?.toString() || ""}
+                          onValueChange={(value) => handleReassignTask(task.idSupportTask, parseInt(value))}
+                        >
+                          <SelectTrigger className="w-[200px] dark:bg-gray-800 dark:text-white">
+                            <SelectValue placeholder="Asignar a..." />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-gray-800 dark:text-white">
+                            {Array.isArray(users) && users.map((user) => (
+                              <SelectItem key={user.idUser} value={user.idUser.toString()}>
+                                {user.name} {user.firstSurname}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
                       {/* Campo para cambiar estado - Ahora usando statusTasks del API */}
-                      <Select
-                        value={task.statusTask.idStatus.toString()}
-                        onValueChange={(value) => handleStatusChange(task.idSupportTask, value)}
-                      >
-                        <SelectTrigger className="w-[200px] dark:bg-gray-800 dark:text-white">
-                          <SelectValue placeholder="Cambiar estado" />
-                        </SelectTrigger>
-                        <SelectContent className="dark:bg-gray-800 dark:text-white">
-                          {Array.isArray(statusTasks) && statusTasks.map((status) => (
-                            <SelectItem key={status.idStatus} value={status.idStatus.toString()}>
-                              {status.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Select
+                          value={task.statusTask?.idStatus?.toString() || ""}
+                          onValueChange={(value) => handleStatusChange(task.idSupportTask, value)}
+                        >
+                          <SelectTrigger className="w-[200px] dark:bg-gray-800 dark:text-white">
+                            <SelectValue placeholder="Cambiar estado" />
+                          </SelectTrigger>
+                          <SelectContent className="dark:bg-gray-800 dark:text-white">
+                            {Array.isArray(statusTasks) && statusTasks.map((status) => (
+                              <SelectItem key={status.idStatus} value={status.idStatus.toString()}>
+                                {status.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation(); // Evita que el clic en el botón propague el evento a la tarjeta
                           setEditTask(task);
+                          setIsEditTaskModalOpen(true);
                         }}
                         className="dark:bg-gray-800 dark:text-white"
                       >
@@ -588,97 +641,7 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Diálogo de Edición */}
-        {editTask && (
-          <Dialog open={!!editTask} onOpenChange={() => setEditTask(null)}>
-            <DialogContent className="sm:max-w-[425px] dark:bg-gray-900">
-              <DialogHeader>
-                <DialogTitle className="dark:text-white">Editar Tarea</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <Input
-                  placeholder="Título de la tarea"
-                  value={editTask.title}
-                  onChange={(e) => setEditTask({ ...editTask, title: e.target.value })}
-                  className="dark:bg-gray-800 dark:text-white"
-                />
-                <Textarea
-                  placeholder="Descripción"
-                  value={editTask.description}
-                  onChange={(e) => setEditTask({ ...editTask, description: e.target.value })}
-                  className="dark:bg-gray-800 dark:text-white"
-                />
-                <Select
-                  value={editTask.priority.name}
-                  onValueChange={(value) => setEditTask({ ...editTask, priority: { name: value } })}
-                >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
-                    <SelectValue placeholder="Prioridad" />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="media">Media</SelectItem>
-                    <SelectItem value="baja">Baja</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={editTask.user.idUser.toString()}
-                  onValueChange={(value) => setEditTask({
-                    ...editTask,
-                    user: { ...editTask.user, idUser: parseInt(value) }
-                  })}
-                >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
-                    <SelectValue placeholder="Asignar a..." />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
-                    {Array.isArray(users) && users.map((user) => (
-                      <SelectItem key={user.idUser} value={user.idUser.toString()}>
-                        {user.name} {user.firstSurname}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {/* Agregamos la selección de estado a la ventana de edición también */}
-                <Select
-                  value={editTask.statusTask.idStatus.toString()}
-                  onValueChange={(value) => {
-                    const selectedStatus = statusTasks.find(status => status.idStatus === parseInt(value));
-                    setEditTask({
-                      ...editTask,
-                      statusTask: {
-                        idStatus: parseInt(value),
-                        name: selectedStatus ? selectedStatus.name : editTask.statusTask.name
-                      }
-                    });
-                  }}
-                >
-                  <SelectTrigger className="dark:bg-gray-800 dark:text-white">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent className="dark:bg-gray-800 dark:text-white">
-                    {Array.isArray(statusTasks) && statusTasks.map((status) => (
-                      <SelectItem key={status.idStatus} value={status.idStatus.toString()}>
-                        {status.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="datetime-local"
-                  value={editTask.endTask}
-                  onChange={(e) => setEditTask({ ...editTask, endTask: e.target.value })}
-                  className="dark:bg-gray-800 dark:text-white"
-                />
-                <DialogFooter>
-                  <Button onClick={handleUpdateTask} className="w-full">
-                    Actualizar Tarea
-                  </Button>
-                </DialogFooter>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
+        {/* El modal de edición ahora está separado como un componente independiente */}
 
         {/* Toast Container para notificaciones */}
 

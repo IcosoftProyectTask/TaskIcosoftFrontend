@@ -41,7 +41,7 @@ const CommentSection = ({
       setNewComment('');
     }
   };
-  
+
   // Función para manejar el envío de una respuesta
   const onSubmitReply = (parentId, isReplyToReply, commentId) => {
     if (replyContent.trim()) {
@@ -62,7 +62,7 @@ const CommentSection = ({
     if (!userInfo || userInfo.id === undefined || contentUserId === undefined) {
       return false;
     }
-    
+
     // Convertir ambos a string para una comparación consistente
     return String(userInfo.id) === String(contentUserId);
   };
@@ -85,7 +85,7 @@ const CommentSection = ({
             {comments.map((comment) => {
               // Asegurar que el comentario tenga un objeto user
               const commentUser = ensureUserExists(comment.user);
-              
+
               return (
                 <div key={comment.id} className="space-y-4">
                   {/* Comentario principal */}
@@ -121,14 +121,14 @@ const CommentSection = ({
                             <MessageSquare className="w-4 h-4 mr-1" />
                             Responder
                           </Button>
-                          
+
                           {isCreator(commentUser.id) && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => {
                                 SweetAlertEliminar(
-                                  '¿Deseas eliminar este comentario?', 
+                                  '¿Deseas eliminar este comentario?',
                                   () => handleDeleteComment(comment.id)
                                 );
                               }}
@@ -183,7 +183,7 @@ const CommentSection = ({
                       {comment.replies.map((reply) => {
                         // Asegurar que la respuesta tenga un objeto user
                         const replyUser = ensureUserExists(reply.user);
-                        
+
                         return (
                           <div key={reply.id} className="rounded-lg bg-gray-50 dark:bg-gray-800 p-4">
                             <div className="flex gap-3">
@@ -217,7 +217,7 @@ const CommentSection = ({
                                     <MessageSquare className="w-4 h-4 mr-1" />
                                     Responder
                                   </Button>
-                                  
+
                                   {isCreator(replyUser.id) && (
                                     <Button
                                       variant="ghost"
@@ -294,14 +294,9 @@ const CommentSection = ({
                 rows={3}
               />
               <div className="flex justify-between mt-3">
-                <Button
-                  variant="outline"
-                  type="button"
-                  className="text-gray-600 dark:text-gray-400"
-                >
-                  <Paperclip className="w-4 h-4 mr-1" />
-                  Adjuntar
-                </Button>
+                <div className="invisible">
+                  {/* Este div mantiene el espacio pero es invisible */}
+                </div>
                 <Button
                   type="submit"
                   disabled={!newComment.trim()}

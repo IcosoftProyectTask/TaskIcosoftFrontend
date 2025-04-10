@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Paperclip, Check } from 'lucide-react';
+import { ArrowLeft, Paperclip, Check, Eye } from 'lucide-react';
 import { useUserContext } from '../../context/UserContext';
 import TaskHeader from './TaskHeader';
 import CommentSection from './CommentSection';
@@ -601,12 +601,13 @@ const handleDeleteReply = async (replyId, parentCommentId) => {
         <Button variant="outline" onClick={() => navigate('/dashboard')}>
           <ArrowLeft className="w-4 h-4 mr-2" /> Volver
         </Button>
+        
         <div className="flex gap-2">
           <Button variant="outline">
             <Paperclip className="w-4 h-4 mr-2" /> Adjuntar
           </Button>
           <Button className="bg-blue-600 hover:bg-blue-700">
-            <Check className="w-4 h-4 mr-2" /> Actualizar Estado
+            <Eye className="w-4 h-4 mr-2" /> Visualizar Metrica
           </Button>
         </div>
       </div>
