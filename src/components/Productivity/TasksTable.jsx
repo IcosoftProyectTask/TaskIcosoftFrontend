@@ -1,13 +1,110 @@
 // components/TasksTable.jsx
-import React from 'react';
-import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowDownRight, ArrowUpRight, Calendar } from 'lucide-react';
 import { getHoursDifference, getStatusColor, getPriorityColor, formatTimeForDisplay } from '../../components/Productivity/utils';
+import { format, parseISO } from 'date-fns';
 
 const TasksTable = ({ tasks, onViewDetails }) => {
-  if (tasks.length === 0) {
+  const [dateFilter, setDateFilter] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    setDateFilter(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const applyDateFilter = () => {
+    setShowDatePicker(false);
+  };
+
+  const resetDateFilter = () => {
+    setDateFilter({
+      startDate: '',
+      endDate: ''
+    });
+    setShowDatePicker(false);
+  };
+
+  const filteredTasks = tasks.filter(task => {
+    if (!dateFilter.startDate && !dateFilter.endDate) return true;
+    
+    const taskDate = task.StartTask ? new Date(task.StartTask) : null;
+    if (!taskDate) return false;
+  
+    const startDate = dateFilter.startDate ? new Date(dateFilter.startDate) : null;
+    const endDate = dateFilter.endDate ? new Date(dateFilter.endDate + 'T23:59:59') : null; // Añadimos hora final del día
+  
+    if (startDate && endDate) {
+      return taskDate >= startDate && taskDate <= endDate;
+    } else if (startDate) {
+      return taskDate >= startDate;
+    } else if (endDate) {
+      return taskDate <= endDate;
+    }
+    return true;
+  });
+
+  if (filteredTasks.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
-        <h3 className="font-medium mb-4 text-gray-800 dark:text-white">Listado de tareas</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-medium text-gray-800 dark:text-white">Listado de tareas</h3>
+          <button 
+            onClick={() => setShowDatePicker(!showDatePicker)}
+            className="flex items-center text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+          >
+            <Calendar className="mr-1" size={16} />
+            Filtrar por fecha
+          </button>
+        </div>
+        
+        {showDatePicker && (
+          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha inicial</label>
+                <input
+                  type="date"
+                  name="startDate"
+                  value={dateFilter.startDate}
+                  onChange={handleDateChange}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha final</label>
+                <input
+                  type="date"
+                  name="endDate"
+                  value={dateFilter.endDate}
+                  onChange={handleDateChange}
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3">
+              <button
+                onClick={applyDateFilter}
+                className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                Aplicar filtro
+              </button>
+              <button
+                onClick={resetDateFilter}
+                className="px-3 py-1.5 bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-white text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                Limpiar filtro
+              </button>
+            </div>
+          </div>
+        )}
+        
         <div className="text-center py-8">
           <p className="text-gray-500 dark:text-gray-400">No se encontraron tareas con los filtros aplicados.</p>
         </div>
@@ -17,7 +114,58 @@ const TasksTable = ({ tasks, onViewDetails }) => {
   
   return (
     <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow overflow-hidden">
-      <h3 className="font-medium mb-3 sm:mb-4 text-gray-800 dark:text-white text-sm sm:text-base">Listado de tareas</h3>
+      <div className="flex justify-between items-center mb-3 sm:mb-4">
+        <h3 className="font-medium text-gray-800 dark:text-white text-sm sm:text-base">Listado de tareas</h3>
+        <button 
+          onClick={() => setShowDatePicker(!showDatePicker)}
+          className="flex items-center text-xs sm:text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+        >
+          <Calendar className="mr-1" size={16} />
+          Filtrar por fecha
+        </button>
+      </div>
+      
+      {showDatePicker && (
+        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha inicial</label>
+              <input
+                type="date"
+                name="startDate"
+                value={dateFilter.startDate}
+                onChange={handleDateChange}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fecha final</label>
+              <input
+                type="date"
+                name="endDate"
+                value={dateFilter.endDate}
+                onChange={handleDateChange}
+                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-600 dark:border-gray-500 dark:text-white text-sm"
+              />
+            </div>
+          </div>
+          <div className="flex space-x-3">
+            <button
+              onClick={applyDateFilter}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              Aplicar filtro
+            </button>
+            <button
+              onClick={resetDateFilter}
+              className="px-3 py-1.5 bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-white text-sm rounded-md hover:bg-gray-300 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            >
+              Limpiar filtro
+            </button>
+          </div>
+        </div>
+      )}
+      
       <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-100 dark:bg-gray-700">
@@ -33,7 +181,7 @@ const TasksTable = ({ tasks, onViewDetails }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {tasks.map((task) => {
+            {filteredTasks.map((task) => {
               const resolutionTime = getHoursDifference(task.StartTask, task.EndTask);
               const formattedTime = resolutionTime ? formatTimeForDisplay(resolutionTime) : '-';
               
@@ -82,6 +230,7 @@ const TasksTable = ({ tasks, onViewDetails }) => {
     </div>
   );
 };
+
 
 // Componentes auxiliares para la tabla
 const PriorityBadge = ({ priority }) => {

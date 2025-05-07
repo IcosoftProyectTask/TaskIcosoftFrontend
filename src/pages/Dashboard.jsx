@@ -594,17 +594,25 @@ function Dashboard() {
                 className="shadow-sm hover:shadow-md transition-shadow dark:bg-gray-900 cursor-pointer"
                 onClick={() => handleTaskClick(task.idSupportTask)}
               >
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-xl font-bold dark:text-white">{task.title}</CardTitle>
-                  <div className="flex gap-2">
-                    <Badge className={getPriorityColor(task.priority?.name)}>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-lg sm:text-xl font-bold dark:text-white truncate pr-2">
+                    {task.title}
+                  </CardTitle>
+                  <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                    <Badge
+                      className={`${getPriorityColor(task.priority?.name)} text-xs sm:text-sm px-2 py-0.5 truncate max-w-[4rem] sm:max-w-none`}
+                    >
                       {(task.priority?.name || "Media").toUpperCase()}
                     </Badge>
-                    <Badge className={getStatusColor(task.statusTask?.name)}>
+                    <Badge
+                      className={`${getStatusColor(task.statusTask?.name)} text-xs sm:text-sm px-2 py-0.5 truncate max-w-[4.5rem] sm:max-w-none`}
+                    >
                       {(task.statusTask?.name || "Pendiente").toUpperCase()}
                     </Badge>
-                    <Badge className={getIdColor(task.idSupportTask)}>
-                      {'#' + task.idSupportTask}
+                    <Badge
+                      className={`${getIdColor(task.idSupportTask)} text-xs sm:text-sm px-2 py-0.5 min-w-[2.8rem]`}
+                    >
+                      #{task.idSupportTask}
                     </Badge>
                   </div>
                 </CardHeader>
