@@ -231,14 +231,41 @@ export const TaskProvider = ({ children }) => {
     }
   };
 
-  // Cambiar estado de tarea
+  // Cambiar estado de tarea con validación de secuencia
   const handleStatusChange = async (taskId, newStatusId) => {
     try {
+      // Convertir a entero
       const statusIdInt = parseInt(newStatusId);
+      
+      // Encontrar la tarea actual
+      const currentTask = tasks.find(task => task.idSupportTask === taskId);
+      if (!currentTask) {
+        toast.error('No se pudo encontrar la tarea.');
+        return;
+      }
+      
+      // Obtener el estado actual
+      const currentStatusId = currentTask.statusTask?.idStatus || 1;
+      
+      // Validar la secuencia de estados
+      if (statusIdInt === currentStatusId) {
+        // No hay cambio, no hacer nada
+        return;
+      } else if (statusIdInt < currentStatusId) {
+        // No permitir retroceder en el flujo
+        toast.error('No se puede retroceder en el flujo de estados.');
+        return;
+      } else if (statusIdInt > currentStatusId + 1) {
+        // No permitir saltar estados (debe seguir la secuencia)
+        toast.error(`Para cambiar a "${statusNamesMap[statusIdInt]}", primero debe estar en "${statusNamesMap[currentStatusId + 1]}".`);
+        return;
+      }
+      
+      // Si todo está bien, actualizar el estado
       await updateSupportTaskStatus(taskId, {
         idStatus: statusIdInt
       });
-      toast.success('Estado de la tarea actualizado.');
+      toast.success(`Estado de la tarea actualizado a "${statusNamesMap[statusIdInt]}".`);
       // No refrescamos porque SignalR lo hará
     } catch (error) {
       console.error('Error al actualizar el estado de la tarea:', error);
@@ -289,6 +316,21 @@ export const TaskProvider = ({ children }) => {
     return date.toLocaleString();
   };
 
+  // Obtener opciones de estado válidas para una tarea
+  const getValidStatusOptions = (task) => {
+    if (!task || !task.statusTask || !task.statusTask.idStatus) {
+      return statusTasks; // Si no hay tarea o estado definido, mostrar todos
+    }
+    
+    const currentStatusId = task.statusTask.idStatus;
+    
+    // Filtrar solo el estado actual y el siguiente permitido
+    return statusTasks.filter(status => {
+      const statusId = status.idStatus;
+      return statusId === currentStatusId || statusId === currentStatusId + 1;
+    });
+  };
+
   // Valor del contexto
   const value = {
     // Estado
@@ -326,7 +368,8 @@ export const TaskProvider = ({ children }) => {
     getStatusColor,
     getIdColor,
     formatDate,
-    refreshData
+    refreshData,
+    getValidStatusOptions
   };
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

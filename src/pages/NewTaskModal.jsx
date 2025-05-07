@@ -36,7 +36,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     idPriority: null,
     idStatus: null,
     solution: '',
-    startTask: new Date().toISOString(),
+    startTask: null,
     endTask: new Date().toISOString(),
   });
 
@@ -94,7 +94,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           }
         } catch (error) {
           console.error('Error fetching company employees:', error);
-          toast.error('Error al cargar los empleados de la compañía.');
+      //    toast.error('Error al cargar los empleados de la compañía.');
           setCompanyEmployees([]);
         }
       };
@@ -118,7 +118,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   
     if (selectedStatus) {
       if (selectedStatus.name.toLowerCase() === 'completada') {
-        endTaskValue = newTask.startTask;
+        endTaskValue = new Date().toISOString();
       } else if (selectedStatus.name.toLowerCase() === 'pendiente') {
         endTaskValue = null;
       } else {
@@ -129,6 +129,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   
     const taskToCreate = {
       ...newTask,
+      startTask: null,
       endTask: endTaskValue,
     };
   
@@ -152,7 +153,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           idPriority: null,
           idStatus: null,
           solution: '',
-          startTask: new Date().toISOString(),
+          startTask: null,
           endTask: new Date().toISOString(),
         });
       } else {

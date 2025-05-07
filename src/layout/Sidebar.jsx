@@ -1,5 +1,6 @@
 //Libraries
 import React, { useState, useEffect, useRef } from "react";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useLocation, NavLink } from "react-router-dom";
 import { decodeToken } from "../utils/Utils";
 import { getUserById } from "../service/UserAPI";
@@ -11,9 +12,12 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
   const location = useLocation();
   const [userRole, setUserRole] = useState(null);
   const { pathname } = location;
+  const navigate = useNavigate();
 
   const trigger = useRef(null);
   const sidebar = useRef(null);
+
+  
 
   const storedSidebarExpanded = localStorage.getItem("sidebar-expanded");
   const [sidebarExpanded, setSidebarExpanded] = useState(
@@ -38,7 +42,23 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
 
       fetchUserData();
     }
-  }, []); // Este useEffect se ejecutará solo una vez, al montar el componente
+  }, []);
+  
+  useEffect(() => {
+    if (userRole != 2 && pathname.includes("/productivity")) {
+      // Redirige al usuario si no tiene el rol adecuado para la ruta
+      navigate("/not-authorized");  // O la ruta que desees para usuarios no autorizados
+    }
+  }, [userRole, pathname, navigate]);
+
+  useEffect(() => {
+    if (userRole != 2 && pathname.includes("/userClient")) {
+      // Redirige al usuario si no tiene el rol adecuado para la ruta
+      navigate("/not-authorized");  // O la ruta que desees para usuarios no autorizados
+    }
+  }, [userRole, pathname, navigate]);
+
+  // Este useEffect se ejecutará solo una vez, al montar el componente
   // close on click outside
   useEffect(() => {
     const clickHandler = ({ target }) => {
@@ -123,7 +143,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
               />
               {sidebarExpanded && (
                 <span className="text-gray-500 dark:text-white font-bold text-xl">
-                 
+
                 </span>
               )}
             </div>
@@ -139,68 +159,72 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
                 Módulos
               </span>
             </h3>
+
+            
             <ul className="mt-3">
-            <li
-            className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("dashboard") &&
-              "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
-              }`}
-          >
-            <NavLink
-              end
-              to="/productivity"
-              className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("dashboard")
-                  ? ""
-                  : "hover:text-gray-900 dark:hover:text-white"
-                }`}
-            >
-              <div className="flex items-center">
-                <svg
-                  className={`shrink-0 fill-current ${pathname === "/productivity" ||
-                      pathname.includes("productivity")
-                      ? "text-blue-500"
-                      : "text-blue-500 dark:text-blue-500"
+            {userRole === 2 ? (
+              <li
+                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("productivity") &&
+                  "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
+                  }`}
+              >
+                <NavLink
+                  end
+                  to="/productivity"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("productivity")
+                    ? ""
+                    : "hover:text-gray-900 dark:hover:text-white"
                     }`}
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
                 >
-                  <path d="M5.936.278A7.983 7.983 0 0 1 8 0a8 8 0 1 1-8 8c0-.722.104-1.413.278-2.064a1 1 0 1 1 1.932.516A5.99 5.99 0 0 0 2 8a6 6 0 1 0 6-6c-.53 0-1.045.076-1.548.21A1 1 0 1 1 5.936.278Z" />
-                  <path d="M6.068 7.482A2.003 2.003 0 0 0 8 10a2 2 0 1 0-.518-3.932L3.707 2.293a1 1 0 0 0-1.414 1.414l3.775 3.775Z" />
-                </svg>
-                <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
-                  Dashboard
-                </span>
-              </div>
-            </NavLink>
-          </li>
+                  <div className="flex items-center">
+                    <svg
+                      className={`shrink-0 fill-current ${pathname === "/productivity" ||
+                        pathname.includes("productivity")
+                        ? "text-blue-500"
+                        : "text-blue-500 dark:text-blue-500"
+                        }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                    >
+                      <path d="M5.936.278A7.983 7.983 0 0 1 8 0a8 8 0 1 1-8 8c0-.722.104-1.413.278-2.064a1 1 0 1 1 1.932.516A5.99 5.99 0 0 0 2 8a6 6 0 1 0 6-6c-.53 0-1.045.076-1.548.21A1 1 0 1 1 5.936.278Z" />
+                      <path d="M6.068 7.482A2.003 2.003 0 0 0 8 10a2 2 0 1 0-.518-3.932L3.707 2.293a1 1 0 0 0-1.414 1.414l3.775 3.775Z" />
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Dashboard
+                    </span>
+                  </div>
+                </NavLink>
+              </li>
+               ) : null}
 
               {/* Task */}
               <li
-                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("musclegroup") &&
+                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("dashboard") &&
                   "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
                   }`}
               >
                 <NavLink
                   end
                   to="/dashboard"
-                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("musclegroup")
-                      ? ""
-                      : "hover:text-gray-900 dark:hover:text-white"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("dashboard")
+                    ? ""
+                    : "hover:text-gray-900 dark:hover:text-white"
                     }`}
                 >
                   <div className="flex items-center">
                     <svg
                       className={`shrink-0 fill-current ${pathname.includes("task")
-                          ? "text-blue-500"
-                          : "text-blue-500 dark:text-blue-500"
+                        ? "text-blue-500"
+                        : "text-blue-500 dark:text-blue-500"
                         }`}
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
                       height="16"
                       viewBox="0 0 24 24"
                     >
-                      <path d="M14 2c0-1.1-.9-2-2-2s-2 .9-2 2v1H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-4V2zm-2 4h4v1h-4V6zm4 11h-4v-4h4v4zm-6-4H8v4h2v-4zm6-6H6v4h12V7z"/>
+                      <path d="M14 2c0-1.1-.9-2-2-2s-2 .9-2 2v1H6c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-4V2zm-2 4h4v1h-4V6zm4 11h-4v-4h4v4zm-6-4H8v4h2v-4zm6-6H6v4h12V7z" />
                     </svg>
                     <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
                       Tareas
@@ -208,67 +232,170 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
                   </div>
                 </NavLink>
               </li>
-           
-          {/* UserClient */}
-          {userRole === 2  ? (
-            <li
-              className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("userClient") &&
-                "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
-                }`}
-            >
-              <NavLink
-                end
-                to="/userClient"
-                className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("userClient") ? "" : "hover:text-gray-900 dark:hover:text-white"
+
+              {/* Acceso Remoto - NUEVO */}
+              <li
+                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("remote") &&
+                  "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
                   }`}
               >
-                <div className="flex items-center">
-                  <svg
-                    className={`shrink-0 fill-current ${pathname.includes("userClient") ? "text-blue-500" : "text-blue-500 dark:text-blue-500"
-                      }`}
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
-                  </svg>
-                  <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
-                    Usuario
-                  </span>
-                </div>
-              </NavLink>
-            </li>
-          ) : null}
-
-          <li
-            className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("obtenerAsistencia") &&
-              "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
-              }`}
-          >
-            <NavLink
-              end
-              to="/obtenerAsistencia"
-              className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("obtenerAsistencia") ? "" : "hover:text-gray-900 dark:hover:text-white"
-                }`}
-            >
-              <div className="flex items-center">
-                <svg
-                  className={`shrink-0 fill-current ${pathname.includes("obtenerAsistencia") ? "text-blue-500" : "text-blue-500 dark:text-blue-500"
+                <NavLink
+                  end
+                  to="/remote"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("remote")
+                    ? ""
+                    : "hover:text-gray-900 dark:hover:text-white"
                     }`}
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
                 >
-                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                </svg>
-                <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
-                  Empresas
-                </span>
-              </div>
-            </NavLink>
-          </li>
+                  <div className="flex items-center">
+                    <svg
+                      className={`shrink-0 fill-current ${pathname.includes("remote")
+                        ? "text-blue-500"
+                        : "text-blue-500 dark:text-blue-500"
+                        }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M20 3H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h3l-1 1v2h12v-2l-1-1h3c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 13H4V5h16v11z" />
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Acceso Remoto
+                    </span>
+                  </div>
+                </NavLink>
+              </li>
+
+              {/* Cuentas de Clientes */}
+              <li
+                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("clienteAccountInfo") &&
+                  "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
+                  }`}
+              >
+                <NavLink
+                  end
+                  to="/clienteAccountInfo"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("clienteAccountInfo")
+                    ? ""
+                    : "hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                >
+                  <div className="flex items-center">
+                    <svg
+                      className={`shrink-0 fill-current ${pathname.includes("clienteAccountInfo")
+                        ? "text-blue-500"
+                        : "text-blue-500 dark:text-blue-500"
+                        }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Cuentas de Clientes
+                    </span>
+                  </div>
+                </NavLink>
+              </li>
+
+              {/* Licencias */}
+              <li
+                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("license") &&
+                  "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
+                  }`}
+              >
+                <NavLink
+                  end
+                  to="/license"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("license")
+                    ? ""
+                    : "hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                >
+                  <div className="flex items-center">
+                    <svg
+                      className={`shrink-0 fill-current ${pathname.includes("license")
+                        ? "text-blue-500"
+                        : "text-blue-500 dark:text-blue-500"
+                        }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-9 9.5H8v1h3V15H6.5v-1.5h3v-1h-3V11H11v.5zm6.5 2.5h-3v1h-1.5V9H17v5z" />
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Licencias
+                    </span>
+                  </div>
+                </NavLink>
+              </li>
+
+
+              {/* UserClient */}
+              {userRole === 2 ? (
+                <li
+                  className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("userClient") &&
+                    "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
+                    }`}
+                >
+                  <NavLink
+                    end
+                    to="/userClient"
+                    className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("userClient") ? "" : "hover:text-gray-900 dark:hover:text-white"
+                      }`}
+                  >
+                    <div className="flex items-center">
+                      <svg
+                        className={`shrink-0 fill-current ${pathname.includes("userClient") ? "text-blue-500" : "text-blue-500 dark:text-blue-500"
+                          }`}
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+                      </svg>
+                      <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                        Usuario
+                      </span>
+                    </div>
+                  </NavLink>
+                </li>
+              ) : null}
+
+              <li
+                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("companies") &&
+                  "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
+                  }`}
+              >
+                <NavLink
+                  end
+                  to="/companies"
+                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("companies") ? "" : "hover:text-gray-900 dark:hover:text-white"
+                    }`}
+                >
+                  <div className="flex items-center">
+                    <svg
+                      className={`shrink-0 fill-current ${pathname.includes("companies") ? "text-blue-500" : "text-blue-500 dark:text-blue-500"
+                        }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
+                    </svg>
+                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                      Empresas
+                    </span>
+                  </div>
+                </NavLink>
+              </li>
 
             </ul>
           </div>

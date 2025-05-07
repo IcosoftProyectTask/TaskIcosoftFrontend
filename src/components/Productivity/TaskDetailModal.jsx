@@ -1,7 +1,6 @@
-
 // components/TaskDetailModal.jsx
 import React from 'react';
-import { formatDate, getHoursDifference } from '../../components/Productivity/utils';
+import { formatDate, getTimeDisplay } from '../../components/Productivity/utils';
 import { PriorityBadge, StatusBadge } from '../../components/Productivity/Badges';
 
 const TaskDetailModal = ({ task, onClose }) => {
@@ -87,22 +86,19 @@ const TaskDetailModal = ({ task, onClose }) => {
               
               <TimeMetricItem 
                 label="Tiempo de respuesta inicial" 
-                value={getHoursDifference(task.CreatedAt, task.StartTask) ? 
-                  `${getHoursDifference(task.CreatedAt, task.StartTask)} horas` : '-'} 
+                value={getTimeDisplay(task.CreatedAt, task.StartTask) || '-'} 
                 highlight
               />
               
               <TimeMetricItem 
                 label="Tiempo de resolución" 
-                value={getHoursDifference(task.StartTask, task.EndTask) ? 
-                  `${getHoursDifference(task.StartTask, task.EndTask)} horas` : '-'} 
+                value={getTimeDisplay(task.StartTask, task.EndTask) || '-'} 
                 highlight
               />
               
               <TimeMetricItem 
                 label="Tiempo total" 
-                value={getHoursDifference(task.CreatedAt, task.EndTask) ? 
-                  `${getHoursDifference(task.CreatedAt, task.EndTask)} horas` : '-'} 
+                value={getTimeDisplay(task.CreatedAt, task.EndTask) || '-'} 
                 highlight
               />
             </div>

@@ -76,6 +76,12 @@ export const SweetAlertEliminar = (eliminarTexto, eliminarFuncion) => {
   }).then((resultado) => {
     if (resultado.isConfirmed) {
       // Ejecutar la función de eliminación
+      Swal.fire({
+        title: '¡Eliminado!',
+        icon: 'success',
+        confirmButtonColor: '#3085d6',
+        timer: 1500
+      });
       eliminarFuncion();
     }
   });

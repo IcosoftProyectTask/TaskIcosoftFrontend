@@ -15,7 +15,12 @@ import LoadingState from '../../components/Productivity/LoadingState';
 import ErrorState from '../../components/Productivity/ErrorState';
 
 // Utilidades
-import { getHoursDifference, normalizeTaskData, calculateMetrics } from './utils';
+import { 
+  getHoursDifference, 
+  normalizeTaskData, 
+  calculateMetrics, 
+  formatTimeForDisplay 
+} from './utils';
 
 const ProductivityDashboard = () => {
   // Estados
@@ -158,7 +163,7 @@ const ProductivityDashboard = () => {
           
           <MetricCard 
             title="Tiempo prom. de resolución"
-            value={`${metrics.avgResolutionTime.toFixed(2)} hrs`}
+            value={metrics.formattedAvgResolutionTime || '0 min'}
             subtitle="Solo tareas completadas"
             icon="Clock"
             color="blue"
@@ -166,7 +171,7 @@ const ProductivityDashboard = () => {
           
           <MetricCard 
             title="Tiempo respuesta inicial"
-            value={`${metrics.avgResponseTime.toFixed(2)} hrs`}
+            value={metrics.formattedAvgResponseTime || '0 min'}
             subtitle="De creación a inicio"
             icon="Activity"
             color="indigo"

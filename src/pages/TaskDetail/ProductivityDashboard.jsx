@@ -15,7 +15,12 @@ import LoadingState from '../../components/Productivity/LoadingState';
 import ErrorState from '../../components/Productivity/ErrorState';
 
 // Utilidades
-import { getHoursDifference, normalizeTaskData, calculateMetrics } from '../../components/Productivity/utils';
+import {
+  getHoursDifference,
+  normalizeTaskData,
+  calculateMetrics,
+  formatTimeForDisplay
+} from '../../components/Productivity/utils';
 
 const ProductivityDashboard = () => {
   // Estados
@@ -30,29 +35,29 @@ const ProductivityDashboard = () => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   // Cargar datos iniciales
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // Recuperar datos simultáneamente para mejor rendimiento
         const [tasksData, statusData, usersData] = await Promise.all([
           getSupportTasks(),
           getStatusTasks(),
           getUsers()
         ]);
-        
+
         const statusList = Array.isArray(statusData.data) ? statusData.data : [];
         const usersList = usersData?.data || [];
-        
+
         // Normalizar datos
-        const normalizedTasks = Array.isArray(tasksData) 
+        const normalizedTasks = Array.isArray(tasksData)
           ? tasksData.map(task => normalizeTaskData(task))
           : [];
-        
+
         setSupportTasks(normalizedTasks);
         setStatusTasks(statusList);
         setUsers(usersList);
@@ -63,10 +68,10 @@ const ProductivityDashboard = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
-  
+
   // Actualizar filtros
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({
@@ -74,7 +79,7 @@ const ProductivityDashboard = () => {
       [name]: value
     }));
   };
-  
+
   // Filtrar datos según selecciones
   const filteredData = useMemo(() => {
     return supportTasks.filter(task => {
@@ -83,10 +88,10 @@ const ProductivityDashboard = () => {
       return matchesEmployee && matchesCategory;
     });
   }, [supportTasks, filters.employee, filters.category]);
-  
+
   // Calcular métricas
   const metrics = useMemo(() => calculateMetrics(filteredData), [filteredData]);
-  
+
   // Mostrar detalle de tarea
   const handleTaskDetail = (task) => {
     setSelectedTask(task);
@@ -108,7 +113,7 @@ const ProductivityDashboard = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-white">Dashboard de Métricas de Productividad</h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Análisis de desempeño en resolución de tareas de soporte</p>
         </header>
-        
+
         {/* Filtros */}
         <div className="bg-white dark:bg-gray-800 p-3 sm:p-4 rounded-lg shadow mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
@@ -116,9 +121,9 @@ const ProductivityDashboard = () => {
               <Filter className="mr-2 text-gray-500 dark:text-gray-400" size={18} />
               <span className="font-medium text-gray-800 dark:text-white">Filtros:</span>
             </div>
-            
+
             <div className="flex-1 w-full">
-              <select 
+              <select
                 className="w-full p-2 border rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-gray-300 dark:border-gray-700"
                 value={filters.employee}
                 onChange={(e) => handleFilterChange('employee', e.target.value)}
@@ -129,9 +134,9 @@ const ProductivityDashboard = () => {
                 ))}
               </select>
             </div>
-            
+
             <div className="flex-1 w-full">
-              <select 
+              <select
                 className="w-full p-2 border rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-white border-gray-300 dark:border-gray-700"
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
@@ -144,7 +149,7 @@ const ProductivityDashboard = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Tarjetas de métricas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
           <MetricCard 
@@ -158,7 +163,7 @@ const ProductivityDashboard = () => {
           
           <MetricCard 
             title="Tiempo prom. de resolución"
-            value={`${metrics.avgResolutionTime.toFixed(2)} hrs`}
+            value={metrics.formattedAvgResolutionTime || '0 min'}
             subtitle="Solo tareas completadas"
             icon="Clock"
             color="blue"
@@ -166,7 +171,7 @@ const ProductivityDashboard = () => {
           
           <MetricCard 
             title="Tiempo respuesta inicial"
-            value={`${metrics.avgResponseTime.toFixed(2)} hrs`}
+            value={metrics.formattedAvgResponseTime || '0 min'}
             subtitle="De creación a inicio"
             icon="Activity"
             color="indigo"
@@ -183,19 +188,19 @@ const ProductivityDashboard = () => {
             color="yellow"
           />
         </div>
-        
+
         {/* Gráficos */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
           <CategoryChart data={metrics.categoryDistribution} />
           <PriorityChart data={filteredData} />
         </div>
-        
+
         {/* Tabla de tareas */}
-        <TasksTable 
-          tasks={filteredData} 
-          onViewDetails={handleTaskDetail} 
+        <TasksTable
+          tasks={filteredData}
+          onViewDetails={handleTaskDetail}
         />
-        
+
         {/* Modal de detalles */}
         {showDetailModal && selectedTask && (
           <TaskDetailModal

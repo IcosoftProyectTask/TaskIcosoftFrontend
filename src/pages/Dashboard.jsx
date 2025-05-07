@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/Button';
+import { decodeToken } from "../utils/Utils";
 import { Input } from '../components/ui/Input';
+import Swal from 'sweetalert2';
+import { getUserById } from "../service/UserAPI";
+import { SweetAlertQuestion, SweetAlertEliminar } from "../assets/js/SweetAlert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import {
   Dialog,
@@ -42,8 +46,11 @@ import LoadingState from '../components/common/LoadingState';
 import { useNavigate } from 'react-router-dom';
 import { NewTaskModal } from './NewTaskModal';
 import { EditTaskModal } from './EditTaskModal'; // Importar el nuevo componente
+import { ConsoleLogger } from '@microsoft/signalr/dist/esm/Utils';
 
 function Dashboard() {
+
+  const [userRole, setUserRole] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const navigate = useNavigate();
@@ -62,7 +69,7 @@ function Dashboard() {
   // Mapeo de IDs a nombres para prioridades
   const priorityNamesMap = {
     1: "Alta",
-    2: "Media", 
+    2: "Media",
     3: "Baja"
   };
 
@@ -81,7 +88,7 @@ function Dashboard() {
   // Función para asegurar que la tarea tenga la estructura correcta
   const ensureTaskStructure = (task) => {
     if (!task) return null;
-    
+
     return {
       ...task,
       // Asegurar que priority exista
@@ -107,6 +114,22 @@ function Dashboard() {
   const [connection, setConnection] = useState(null);
 
   useEffect(() => {
+    const user = decodeToken();
+    if (user) {
+      const fetchUserData = async () => {
+        try {
+          const userData = await getUserById(user);
+          console.log(userData);
+          setUserRole(userData.idRole);
+        } catch (error) {
+          console.error('Error al obtener la información del usuario:', error);
+        }
+      };
+      fetchUserData();
+    }
+  }, []);
+
+  useEffect(() => {
     // Crear la conexión al Hub de SignalR
     const newConnection = new HubConnectionBuilder()
       .withUrl('http://localhost:5272/taskHub')
@@ -126,11 +149,11 @@ function Dashboard() {
           // Escuchar evento de creación de tareas
           connection.on('TaskCreated', (task) => {
             console.log('Nueva tarea creada (original):', task);
-            
+
             // Transformar la tarea para asegurar que tenga la estructura correcta
             const transformedTask = ensureTaskStructure(task);
             console.log('Nueva tarea transformada:', transformedTask);
-            
+
             // Agregar la tarea transformada al estado
             setTasks(prevTasks => [...prevTasks, transformedTask]);
           });
@@ -202,7 +225,7 @@ function Dashboard() {
         // Aplicar ensureTaskStructure a cada tarea
         const safeTasksData = tasksData.map(task => ensureTaskStructure(task));
         setTasks(safeTasksData);
-        
+
         setUsers(usersData.data);
         setStatusTasks(statusData.data);
         setError(null);
@@ -216,7 +239,7 @@ function Dashboard() {
 
     fetchData();
   }, [refreshKey]);
-  
+
   const getTaskStats = () => {
     if (!Array.isArray(tasks)) {
       console.error('Tasks is not an array:', tasks);
@@ -227,7 +250,7 @@ function Dashboard() {
         completadas: 0
       };
     }
-  
+
     return {
       total: tasks.length,
       pendientes: tasks.filter(t => t.statusTask && t.statusTask.name === 'Pendiente').length,
@@ -253,7 +276,7 @@ function Dashboard() {
   // Actualizar una tarea (con el nuevo componente)
   const handleTaskUpdated = () => {
     // No necesitamos hacer nada aquí porque SignalR actualizará la lista
-   // toast.success('Tarea actualizada exitosamente.');
+    // toast.success('Tarea actualizada exitosamente.');
     setIsEditTaskModalOpen(false);
     setEditTask(null);
   };
@@ -297,74 +320,111 @@ function Dashboard() {
   };
 
   // Eliminar una tarea
-  const handleDeleteTask = async (taskId) => {
-    try {
-      await deleteSupportTask(taskId);
-      // No necesitamos actualizar el estado, SignalR lo hará
-      toast.success('Tarea eliminada exitosamente.');
-    } catch (error) {
-      console.error('Error al eliminar la tarea:', error);
-      toast.error('Error al eliminar la tarea.');
-    }
+  const handleDeleteTask = (taskId) => {
+    SweetAlertEliminar(
+      '¿Estás seguro de eliminar esta tarea? Esta acción no se puede deshacer.',
+      async () => {
+        try {
+          await deleteSupportTask(taskId);
+          SweetAlertSuccess('Tarea eliminada exitosamente.');
+        } catch (error) {
+          console.error('Error al eliminar la tarea:', error);
+          SweetAlertError('Error al eliminar la tarea.');
+        }
+      }
+    );
   };
 
+  // Cambiar estado de tarea con validación de secuencia y confirmación
   const handleStatusChange = async (taskId, newStatusId) => {
     try {
-      const statusIdInt = parseInt(newStatusId);
-      const taskToUpdate = { idStatus: statusIdInt };
-      
-      // Si el estado nuevo es "Completado" (ID 3), actualizar la fecha de finalización
-      if (statusIdInt === 3) {
-        taskToUpdate.endTask = new Date().toISOString();
-      } else {
-        // Si el estado no es "Completado", establecer endTask como null
-        taskToUpdate.endTask = null;
+      // Encontrar la tarea actual
+      const task = tasks.find(t => t.idSupportTask === taskId);
+      if (!task) {
+        await Swal.fire('Error', 'Tarea no encontrada', 'error');
+        return;
       }
-      
-      await updateSupportTaskStatus(taskId, taskToUpdate);
-  
-      // No necesitamos actualizar el estado, SignalR lo hará
-      toast.success('Estado de la tarea actualizado.');
+
+      // Obtener el estado actual
+      const currentStatusId = task.statusTask?.idStatus || 1;
+      const newStatusIdInt = parseInt(newStatusId);
+
+      // Validar el flujo de estados
+      if (newStatusIdInt === 2 && currentStatusId !== 1) {
+        await Swal.fire('Error', 'Solo puedes cambiar a "En Progreso" desde "Pendiente"', 'error');
+        return;
+      }
+
+      if (newStatusIdInt === 3 && currentStatusId !== 2) {
+        await Swal.fire('Error', 'Solo puedes cambiar a "Completado" desde "En Progreso"', 'error');
+        return;
+      }
+
+      if (newStatusIdInt < currentStatusId) {
+        await Swal.fire('Error', 'No puedes retroceder el estado de la tarea', 'error');
+        return;
+      }
+
+      // Si la validación pasa, pedir confirmación antes de actualizar
+      const confirmResult = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: `¿Deseas cambiar el estado de la tarea a "${statusNamesMap[newStatusIdInt]}"?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, cambiar',
+        cancelButtonText: 'Cancelar'
+      });
+
+      // Si el usuario confirma, entonces actualizar
+      if (confirmResult.isConfirmed) {
+        await updateSupportTaskStatus(taskId, {
+          idStatus: newStatusIdInt
+        });
+        await Swal.fire('Éxito', 'Estado de la tarea actualizado', 'success');
+      }
     } catch (error) {
       console.error('Error al actualizar el estado de la tarea:', error);
-      toast.error('Error al actualizar el estado de la tarea.');
+      await Swal.fire('Error', 'Error al actualizar el estado de la tarea', 'error');
     }
   };
 
   // Filtrar y ordenar tareas con manejo seguro de propiedades
   const filteredTasks = tasks.filter(task => {
     if (!task) return false;
-  
+
+    // Filtro por estado (mostrar solo Pendiente/En Progreso a menos que se seleccione Completado)
+    const currentStatus = task.statusTask?.name?.toLowerCase().replace(' ', '_') || '';
+    if (filterStatus !== 'completado' && currentStatus === 'completado') {
+      return false;
+    }
+
     // Verificar si el término de búsqueda comienza con # para búsqueda exclusiva por ID
     if (searchTerm.startsWith('#')) {
-      // Extraer el número después de #
       const idToSearch = searchTerm.substring(1);
-      // Comparar solo con el ID de la tarea
       return String(task.idSupportTask || "").includes(idToSearch);
     }
-  
+
     // Búsqueda normal en título, descripción e ID
     const searchTermLower = searchTerm.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       (task.title?.toLowerCase() || "").includes(searchTermLower) ||
       (task.description?.toLowerCase() || "").includes(searchTermLower) ||
       String(task.idSupportTask || "").includes(searchTermLower);
-    
-    // El resto de la lógica de filtrado se mantiene igual
-    const matchesPriority = 
+
+    const matchesPriority =
       filterPriority === 'todos' ||
       (task.priority?.name?.toLowerCase() || "") === filterPriority;
-    
-    const matchesStatus = 
+
+    const matchesStatus =
       filterStatus === 'todos' ||
-      (task.statusTask?.name?.toLowerCase().replace(' ', '_') || "") === filterStatus;
-    
+      currentStatus === filterStatus;
+
     return matchesSearch && matchesPriority && matchesStatus;
   });
 
   const sortedTasks = filteredTasks.sort((a, b) => {
     if (!a || !b) return 0;
-    
+
     if (sortBy === 'createdAt') {
       return new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now());
     } else if (sortBy === 'priority') {
@@ -386,6 +446,12 @@ function Dashboard() {
     const date = new Date(dateString);
     return date.toLocaleString();
   };
+
+  const isValidDate = (date) => {
+    const parsed = new Date(date);
+    return parsed instanceof Date && !isNaN(parsed.getTime());
+  };
+
 
   if (loading) {
     return <LoadingState />;
@@ -420,7 +486,7 @@ function Dashboard() {
             onCreateTask={handleCreateTask}
           />
         </Dialog>
-        
+
         {/* Modal de edición de tarea (separado del Dialog) */}
         <EditTaskModal
           isOpen={isEditTaskModalOpen}
@@ -515,16 +581,6 @@ function Dashboard() {
                   <SelectItem value="completado">Completado</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[150px] dark:bg-gray-800 dark:text-white">
-                  <SelectValue placeholder="Ordenar por" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-gray-800 dark:text-white">
-                  <SelectItem value="createdAt">Fecha de Creación</SelectItem>
-                  <SelectItem value="priority">Prioridad</SelectItem>
-                  <SelectItem value="status">Estado</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </div>
@@ -566,8 +622,9 @@ function Dashboard() {
                       </div>
                       <div className="flex items-center gap-1">
                         <AlertCircle size={16} />
-                        <span>Vence: {formatDate(task.endTask)}</span>
+                        <span>Vence: {isValidDate(task.endTask) ? formatDate(task.endTask) : 'Sin definir'}</span>
                       </div>
+
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       {/* Campo para reasignar tarea */}
@@ -588,7 +645,7 @@ function Dashboard() {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       {/* Campo para cambiar estado - Ahora usando statusTasks del API */}
                       <div onClick={(e) => e.stopPropagation()}>
                         <Select
@@ -607,7 +664,7 @@ function Dashboard() {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -621,18 +678,20 @@ function Dashboard() {
                         <Edit2 className="w-4 h-4 mr-2" />
                         Editar
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-700 dark:bg-gray-800 dark:text-red-400"
-                        onClick={(e) => {
-                          e.stopPropagation(); // Evita que el clic en el botón propague el evento a la tarjeta
-                          handleDeleteTask(task.idSupportTask);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                      </Button>
+                      {userRole == 2 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 dark:bg-gray-800 dark:text-red-400"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTask(task.idSupportTask);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Eliminar
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

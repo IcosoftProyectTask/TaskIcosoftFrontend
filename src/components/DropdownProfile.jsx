@@ -1,23 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Transition from '../utils/Transition';
-
-import { useUserContext } from '../context/UserContext.jsx';
 import { Avatar } from "@mui/material";
 import { lightBlue } from '@mui/material/colors';
-
+import { decodeToken } from "../utils/Utils";
+import { getUserById } from "../service/UserAPI";
+import { useUserContext } from '../context/UserContext';
 
 function DropdownProfile({
   align
 }) {
-
   const [dropdownOpen, setDropdownOpen] = useState(false);
-
+  const [userImage, setUserImage] = useState(null);  // Estado para la imagen del usuario
   const trigger = useRef(null);
   const dropdown = useRef(null);
-
   const { userInfo } = useUserContext();
-  
+
+  // Fetch user image when component mounts
+  useEffect(() => {
+    const fetchUserImage = async () => {
+      try {
+        const user = decodeToken(); // Decodificar token para obtener el ID del usuario
+        const userData = await getUserById(user); // Obtener datos del usuario por ID
+        if (userData.image && userData.image.base64Image) {
+          setUserImage(userData.image.base64Image); // Establecer la imagen del usuario
+        }
+      } catch (error) {
+        console.error("Error fetching user image:", error);
+      }
+    };
+
+    fetchUserImage();
+  }, []);
+
   // close on click outside
   useEffect(() => {
     const clickHandler = ({ target }) => {
@@ -48,9 +63,21 @@ function DropdownProfile({
         onClick={() => setDropdownOpen(!dropdownOpen)}
         aria-expanded={dropdownOpen}
       >
-        <Avatar alt="Fernanda Gonzalez" sx={{ width: 35, height: 35, bgcolor: lightBlue[500] }}>{userInfo.name.charAt(0)}</Avatar>
+        {/* Mostrar imagen si está disponible, sino mostrar la inicial */}
+        <Avatar
+          alt={`${userInfo.name} ${userInfo.firstSurname}`}
+          sx={{ width: 35, height: 35 }}
+          src={userImage || ""}  // Usamos la imagen si está disponible
+          bgcolor={!userImage ? lightBlue[500] : 'transparent'}
+        >
+          {/* Si no hay imagen, mostrar la inicial del nombre */}
+          {!userImage && userInfo.name.charAt(0)}
+        </Avatar>
+
         <div className="flex items-center truncate">
-          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">{userInfo.name} {userInfo.firstSurname} {userInfo.secondSurname}</span>
+          <span className="truncate ml-2 text-sm font-medium text-gray-600 dark:text-gray-100 group-hover:text-gray-800 dark:group-hover:text-white">
+            {userInfo.name} {userInfo.firstSurname} {userInfo.secondSurname}
+          </span>
           <svg className="w-3 h-3 shrink-0 ml-1 fill-current text-gray-400 dark:text-gray-500" viewBox="0 0 12 12">
             <path d="M5.9 11.4L.5 6l1.4-1.4 4 4 4-4L11.3 6z" />
           </svg>
@@ -74,7 +101,6 @@ function DropdownProfile({
         >
           <div className="pt-0.5 pb-2 px-3 mb-1 border-b border-gray-200 dark:border-gray-700/60">
             <div className="font-medium text-gray-800 dark:text-gray-100">{userInfo.name} {userInfo.firstSurname} {userInfo.secondSurname}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 italic">Admin</div>
           </div>
           <ul>
             <li>
@@ -102,7 +128,7 @@ function DropdownProfile({
         </div>
       </Transition>
     </div>
-  )
+  );
 }
 
 export default DropdownProfile;

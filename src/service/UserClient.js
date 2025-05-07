@@ -43,15 +43,29 @@ export async function getUserClientName() {
     }
   }
   
-
-//Delete usuarios
-export async function DeleteUserClient(id) {
+  export async function DeleteUserClient(id) {
     try {
+        // Validación del ID
+        if (!id) {
+            throw new Error("ID del usuario no proporcionado");
+        }
+        
+        console.log(`Intentando eliminar usuario con ID: ${id}`);
         const { data } = await api.delete(`/user/${id}`);
         return data;
     } catch (error) {
-        if (isAxiosError(error) && error.response.message) {
+        console.error("Error al eliminar usuario:", error);
+        
+        if (error.message === "ID del usuario no proporcionado") {
+            throw new Error(error.message);
+        }
+        
+        if (isAxiosError(error) && error.response?.data?.message) {
             throw new Error(error.response.data.message);
+        } else if (isAxiosError(error)) {
+            throw new Error("Error al eliminar el usuario");
+        } else {
+            throw error;
         }
     }
 }
@@ -66,3 +80,4 @@ export async function UpdateUserClient({id, values}) {
         throw new Error('Error al actualizar usuario');
     }
 }
+  

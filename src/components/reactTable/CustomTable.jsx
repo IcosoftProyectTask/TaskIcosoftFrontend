@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React from "react";
 import { MaterialReactTable } from "material-react-table";
 import { MRT_Localization_ES } from "material-react-table/locales/es";
 import useTableTheme from "../../utils/TableTheme";
@@ -7,6 +7,7 @@ import RowAction from "./RowAction";
 import TopToolAction from "./TopToolAction";
 import DialogBase from "../dialog/DialogBase";
 
+// IMPORTANTE: Eliminar la doble memorización
 export default function CustomTable({
   columns,
   data,
@@ -18,12 +19,51 @@ export default function CustomTable({
   setValidationErrors
 }) {
   const tableTheme = useTableTheme();
-  const memoizedColumns = useMemo(() => columns, [columns]);
+  
+  // Eliminar esta memorización ya que columns ya viene memorizado
+  // const memoizedColumns = useMemo(() => columns, [columns]);
+  
+  // Definir las funciones renderizadoras fuera del JSX para mejor claridad
+  const renderCreateRowDialogContent = ({ table, row, internalEditComponents }) => (
+    <DialogBase 
+      table={table} 
+      row={row} 
+      internalEditComponents={internalEditComponents} 
+      title={titleCreate} 
+    />
+  );
+
+  const renderEditRowDialogContent = ({ table, row, internalEditComponents }) => (
+    <DialogBase 
+      table={table} 
+      row={row} 
+      internalEditComponents={internalEditComponents} 
+      title={titleEdit} 
+    />
+  );
+
+  const renderRowActionMenuItems = ({ row, table, closeMenu }) => [
+    <RowAction
+      key={`row-action-${row.id || Math.random()}`}
+      row={row}
+      table={table}
+      handleEdit={handleEdit}
+      handleDelete={handleDelete}
+      closeMenu={closeMenu}
+    />
+  ];
+
+  const renderTopToolbarCustomActions = ({ table }) => (
+    <TopToolAction table={table} titleCreate={titleCreate} />
+  );
+
+  const handleCreatingRowCancel = () => setValidationErrors({});
+  const handleEditingRowCancel = () => setValidationErrors({});
 
   return (
     <ThemeProvider theme={tableTheme}>
       <MaterialReactTable
-        columns={memoizedColumns}
+        columns={columns} // Usar columns directamente
         data={data}
         enableFullScreenToggle={true}
         createDisplayMode={'modal'}
@@ -37,25 +77,12 @@ export default function CustomTable({
         muiSkeletonProps={{ animation: "pulse", height: 28 }}
         onCreatingRowSave={handleSave}
         onEditingRowSave={handleEdit}
-        onCreatingRowCancel={() => setValidationErrors({})}
-        onEditingRowCancel={() => setValidationErrors({})}
-        renderCreateRowDialogContent={({ table, row, internalEditComponents }) => (
-          <DialogBase table={table} row={row} internalEditComponents={internalEditComponents} title={titleCreate} />
-        )}
-        renderEditRowDialogContent={({ table, row, internalEditComponents }) => (
-          <DialogBase table={table} row={row} internalEditComponents={internalEditComponents} title={titleEdit} />
-        )}
-        renderRowActionMenuItems={({ row, table, closeMenu }) => [
-          <RowAction
-            key={`row-action-${row.id}`}
-            row={row}
-            table={table}
-            handleEdit={handleEdit}
-            handleDelete={handleDelete}
-            closeMenu={closeMenu}
-          />
-        ]}
-        renderTopToolbarCustomActions={({ table }) => <TopToolAction table={table} titleCreate = {titleCreate} />}
+        onCreatingRowCancel={handleCreatingRowCancel}
+        onEditingRowCancel={handleEditingRowCancel}
+        renderCreateRowDialogContent={renderCreateRowDialogContent}
+        renderEditRowDialogContent={renderEditRowDialogContent}
+        renderRowActionMenuItems={renderRowActionMenuItems}
+        renderTopToolbarCustomActions={renderTopToolbarCustomActions}
       />
     </ThemeProvider>
   );

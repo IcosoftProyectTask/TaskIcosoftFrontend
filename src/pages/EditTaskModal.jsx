@@ -101,7 +101,7 @@ export const EditTaskModal = ({ isOpen, onClose, onTaskUpdated, task }) => {
           }
         } catch (error) {
           console.error('Error fetching company employees:', error);
-          toast.error('Error al cargar los empleados de la compañía.');
+          //toast.error('Error al cargar los empleados de la compañía.');
           setCompanyEmployees([]);
         }
       };

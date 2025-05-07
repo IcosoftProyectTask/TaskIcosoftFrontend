@@ -52,4 +52,22 @@ export async function getUserById(id) {
       throw new Error('Error al obtener usuario');
   }
 }
+
+
+// Actualizar la foto de un usuario
+export async function UpdateUserClientPhoto({ id, base64Image }) {
+    try {
+        const { data } = await api.patch(`/user/update-image/${id}`, {
+            updateBase64Image: base64Image,
+        });
+        return data;
+    } catch (error) {
+        console.error("Error al actualizar la imagen del usuario:", error);
+        if (isAxiosError(error) && error.response?.data?.message) {
+            throw new Error(error.response.data.message);
+        } else {
+            throw new Error("Error al actualizar la imagen del usuario.");
+        }
+    }
+}
   

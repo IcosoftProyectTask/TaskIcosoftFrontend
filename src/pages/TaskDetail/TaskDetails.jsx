@@ -94,6 +94,14 @@ const TaskDetails = ({ task, getFormattedDate }) => {
                 {task.company.companyPhone}
               </p>
             </div>
+            <div>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                Empleado
+              </p>
+              <p className="text-gray-800 dark:text-gray-200">
+                {task.nameEmployeeCompany}       
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

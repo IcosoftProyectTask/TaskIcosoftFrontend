@@ -14,6 +14,13 @@ import {
 } from '../../components/ui/select';
 import { useTaskContext } from '../../context/TaskContext';
 
+// Función auxiliar para validar fechas
+const isValidDate = (dateString) => {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  return !isNaN(date.getTime());
+};
+
 const TaskCard = ({ task }) => {
   const navigate = useNavigate();
   const { 
@@ -26,7 +33,8 @@ const TaskCard = ({ task }) => {
     handleDeleteTask,
     setEditTask,
     users,
-    statusTasks
+    statusTasks,
+    getValidStatusOptions
   } = useTaskContext();
 
   const handleTaskClick = (taskId) => {
@@ -37,6 +45,9 @@ const TaskCard = ({ task }) => {
   const handleStopPropagation = (e) => {
     e.stopPropagation();
   };
+
+  // Obtener solo los estados válidos para esta tarea
+  const validStatusOptions = getValidStatusOptions(task);
 
   return (
     <Card
@@ -71,7 +82,7 @@ const TaskCard = ({ task }) => {
             </div>
             <div className="flex items-center gap-1">
               <AlertCircle size={16} />
-              <span>Vence: {formatDate(task.endTask)}</span>
+              <span>Vence: {isValidDate(task.endTask) ? formatDate(task.endTask) : 'Sin definir'}</span>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -96,7 +107,7 @@ const TaskCard = ({ task }) => {
               </SelectContent>
             </Select>
             
-            {/* Campo para cambiar estado */}
+            {/* Campo para cambiar estado - muestra solo estados válidos según el flujo */}
             <Select
               value={task.statusTask?.idStatus?.toString() || ""}
               onValueChange={(value) => handleStatusChange(task.idSupportTask, value)}
@@ -109,7 +120,7 @@ const TaskCard = ({ task }) => {
                 <SelectValue placeholder="Cambiar estado" />
               </SelectTrigger>
               <SelectContent className="dark:bg-gray-800 dark:text-white">
-                {Array.isArray(statusTasks) && statusTasks.map((status) => (
+                {Array.isArray(validStatusOptions) && validStatusOptions.map((status) => (
                   <SelectItem key={status.idStatus} value={status.idStatus.toString()}>
                     {status.name}
                   </SelectItem>

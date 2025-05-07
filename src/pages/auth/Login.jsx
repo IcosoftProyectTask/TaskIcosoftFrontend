@@ -110,11 +110,13 @@ export default function Login() {
         redirect={"/forgot_password"}
         text={"¿Olvidaste tu contraseña?"}
       />
+      {/* <LinkForm}
       <LinkForm
         redirect={"/create_account"}
         text={"¡Crear una cuenta!"}
         className={"mt-2"}
       />
+      {} */}
     </Container>
   );
   

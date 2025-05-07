@@ -1,9 +1,7 @@
-// Componentes para manejo de tareas
-
 // components/TasksTable.jsx
 import React from 'react';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
-import { getHoursDifference, getStatusColor, getPriorityColor } from '../../components/Productivity/utils';
+import { getHoursDifference, getStatusColor, getPriorityColor, formatTimeForDisplay } from '../../components/Productivity/utils';
 
 const TasksTable = ({ tasks, onViewDetails }) => {
   if (tasks.length === 0) {
@@ -37,6 +35,7 @@ const TasksTable = ({ tasks, onViewDetails }) => {
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {tasks.map((task) => {
               const resolutionTime = getHoursDifference(task.StartTask, task.EndTask);
+              const formattedTime = resolutionTime ? formatTimeForDisplay(resolutionTime) : '-';
               
               return (
                 <tr key={task.IdSupportTask} className="hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -61,7 +60,7 @@ const TasksTable = ({ tasks, onViewDetails }) => {
                           ? <ArrowDownRight className="text-green-500 mr-1" size={14} /> 
                           : <ArrowUpRight className="text-red-500 mr-1" size={14} />
                         }
-                        {resolutionTime} hrs
+                        {formattedTime}
                       </span> : 
                       <span className="text-gray-400 dark:text-gray-500 text-sm">-</span>
                     }
