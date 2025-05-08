@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import { useLocation, NavLink } from "react-router-dom";
 import { decodeToken } from "../utils/Utils";
+import { Settings } from "lucide-react";
 import { getUserById } from "../service/UserAPI";
 import logo from "../assets/images/logo.png";
 import SidebarLinkGroup from "../partials/SidebarLinkGroup";
@@ -17,7 +18,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
   const trigger = useRef(null);
   const sidebar = useRef(null);
 
-  
+
 
   const storedSidebarExpanded = localStorage.getItem("sidebar-expanded");
   const [sidebarExpanded, setSidebarExpanded] = useState(
@@ -43,7 +44,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
       fetchUserData();
     }
   }, []);
-  
+
   useEffect(() => {
     if (userRole != 2 && pathname.includes("/productivity")) {
       // Redirige al usuario si no tiene el rol adecuado para la ruta
@@ -53,6 +54,13 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
 
   useEffect(() => {
     if (userRole != 2 && pathname.includes("/userClient")) {
+      // Redirige al usuario si no tiene el rol adecuado para la ruta
+      navigate("/not-authorized");  // O la ruta que desees para usuarios no autorizados
+    }
+  }, [userRole, pathname, navigate]);
+
+  useEffect(() => {
+    if (userRole != 2 && pathname.includes("/webadmin")) {
       // Redirige al usuario si no tiene el rol adecuado para la ruta
       navigate("/not-authorized");  // O la ruta que desees para usuarios no autorizados
     }
@@ -160,44 +168,71 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
               </span>
             </h3>
 
-            
+
             <ul className="mt-3">
-            {userRole === 2 ? (
-              <li
-                className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("productivity") &&
-                  "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
-                  }`}
-              >
-                <NavLink
-                  end
-                  to="/productivity"
-                  className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("productivity")
-                    ? ""
-                    : "hover:text-gray-900 dark:hover:text-white"
+
+              {userRole === 2 ? (
+                <li
+                  className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("webadmin") &&
+                    "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
                     }`}
                 >
-                  <div className="flex items-center">
-                    <svg
-                      className={`shrink-0 fill-current ${pathname === "/productivity" ||
-                        pathname.includes("productivity")
-                        ? "text-blue-500"
-                        : "text-blue-500 dark:text-blue-500"
-                        }`}
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 16 16"
-                    >
-                      <path d="M5.936.278A7.983 7.983 0 0 1 8 0a8 8 0 1 1-8 8c0-.722.104-1.413.278-2.064a1 1 0 1 1 1.932.516A5.99 5.99 0 0 0 2 8a6 6 0 1 0 6-6c-.53 0-1.045.076-1.548.21A1 1 0 1 1 5.936.278Z" />
-                      <path d="M6.068 7.482A2.003 2.003 0 0 0 8 10a2 2 0 1 0-.518-3.932L3.707 2.293a1 1 0 0 0-1.414 1.414l3.775 3.775Z" />
-                    </svg>
-                    <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
-                      Dashboard
-                    </span>
-                  </div>
-                </NavLink>
-              </li>
-               ) : null}
+                  <NavLink
+                    end
+                    to="/webadmin"
+                    className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("webadmin")
+                        ? ""
+                        : "hover:text-gray-900 dark:hover:text-white"
+                      }`}
+                  >
+                    <div className="flex items-center">
+                      <Settings className="w-5 h-5 text-blue-500 dark:text-blue-400" />
+                      <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                        Panel de Control
+                      </span>
+                    </div>
+                  </NavLink>
+                </li>
+              ) : null}
+
+
+
+              {userRole === 2 ? (
+                <li
+                  className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("productivity") &&
+                    "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
+                    }`}
+                >
+                  <NavLink
+                    end
+                    to="/productivity"
+                    className={`block text-gray-800 dark:text-gray-100 truncate transition duration-150 ${pathname.includes("productivity")
+                      ? ""
+                      : "hover:text-gray-900 dark:hover:text-white"
+                      }`}
+                  >
+                    <div className="flex items-center">
+                      <svg
+                        className={`shrink-0 fill-current ${pathname === "/productivity" ||
+                          pathname.includes("productivity")
+                          ? "text-blue-500"
+                          : "text-blue-500 dark:text-blue-500"
+                          }`}
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                      >
+                        <path d="M5.936.278A7.983 7.983 0 0 1 8 0a8 8 0 1 1-8 8c0-.722.104-1.413.278-2.064a1 1 0 1 1 1.932.516A5.99 5.99 0 0 0 2 8a6 6 0 1 0 6-6c-.53 0-1.045.076-1.548.21A1 1 0 1 1 5.936.278Z" />
+                        <path d="M6.068 7.482A2.003 2.003 0 0 0 8 10a2 2 0 1 0-.518-3.932L3.707 2.293a1 1 0 0 0-1.414 1.414l3.775 3.775Z" />
+                      </svg>
+                      <span className="text-sm font-medium ml-4 lg:opacity-0 lg:sidebar-expanded:opacity-100 2xl:opacity-100 duration-200">
+                        Dashboard
+                      </span>
+                    </div>
+                  </NavLink>
+                </li>
+              ) : null}
 
               {/* Task */}
               <li

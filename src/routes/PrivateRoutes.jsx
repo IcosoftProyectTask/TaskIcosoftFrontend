@@ -15,6 +15,7 @@ import RomoteView from "../pages/InfoText/RomoteView";
 import ClienteAccountInfoView from "../pages/InfoText/clienteAccountInfoView";
 import LicenseView from "../pages/InfoText/LicenseView";
 import NotAuthorized from "../pages/NotAuthorized/NotAuthorized";
+import WebAdmin from "../pages/ControlPanel/WebAdmin";
 
 export default function PrivateRoutes() {
   const { userInfo } = useUserContext(); // Obtener la información del usuario desde el contexto
@@ -28,6 +29,7 @@ export default function PrivateRoutes() {
         <Route path="/userClient"  element={userRole !== 2 ? <UserClients /> : <Navigate to="/not-authorized" />} />
         <Route path="/task/:id" element={<TaskDetailView />} />
         <Route path="/profile" element={<Profile/>} />
+        <Route path="/webadmin" element={userRole !== 2 ? <WebAdmin /> : <Navigate to="/not-authorized" />} />
         <Route path="/productivity" element={userRole !== 2 ? <ProductivityDashboard /> : <Navigate to="/not-authorized" />} />
         <Route path="/companies" element={<CompaniesManagement />} />
         <Route path="/remote" element={<RomoteView />} />
