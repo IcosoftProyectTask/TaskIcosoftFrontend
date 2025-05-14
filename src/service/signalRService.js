@@ -31,7 +31,7 @@ class SignalRService {
     this.connectionAttempts++;
     this.pendingTaskId = taskId; // Almacenar el taskId para unirse después de conectar
     
-    const backendUrl = process.env.REACT_APP_API_URL || "http://localhost:5272";
+    const backendUrl = process.env.REACT_APP_API_URL || "http://192.168.1.124:5297";
     
     this.connection = new signalR.HubConnectionBuilder()
       .withUrl(`${backendUrl}/commentsHub`, { 

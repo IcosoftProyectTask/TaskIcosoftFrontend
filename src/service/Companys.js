@@ -10,7 +10,8 @@ const cleanCompanyData = (companyData) => {
     email: companyData.email,
     companyAddress: companyData.companyAddress,
     idCart: companyData.idCart,
-    companyPhone: companyData.companyPhone
+    companyPhone: companyData.companyPhone,
+    status: companyData.status,
   };
 };
 

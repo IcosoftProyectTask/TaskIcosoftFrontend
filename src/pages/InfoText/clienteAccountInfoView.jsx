@@ -6,7 +6,7 @@ import CustomTable from "../../components/reactTable/CustomTable";
 import { columnsClienteAccountInfo } from "../../components/reactTable/Colums";
 import Spinner from "../../components/Spinner";
 // API
-import { getClienteAccountInfos, createClienteAccountInfo, updateClienteAccountInfo, deleteClienteAccountInfo, bulkCreateClienteAccountInfos } from "../../service/clienteAccountInfoApi";
+import { getClienteAccountInfos, createClienteAccountInfo, updateClienteAccountInfo, deleteClienteAccountInfo } from "../../service/clienteAccountInfoApi";
 // Alert
 import { SweetAlertEliminar } from "../../assets/js/SweetAlert";
 import { ToastError, ToastSuccess } from "../../assets/js/Toastify";

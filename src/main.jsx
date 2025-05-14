@@ -6,6 +6,7 @@ import { ToastContainer } from "react-toastify";
 import ThemeProvider from "./context/ThemeContext";
 import { BrowserRouter as Router } from 'react-router-dom';
 import { UserProvider } from "./context/UserContext";
+import { CompanyProvider } from './context/CompanyContext';
 
 import App from "./App";
 import "react-toastify/dist/ReactToastify.css";
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <Router>
       <QueryClientProvider client={queryClient}>
         <UserProvider>
+          <CompanyProvider>
           <ThemeProvider>
             <App />
             <ReactQueryDevtools initialIsOpen={false} />
@@ -34,6 +36,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
               limit={1}       // Limita a 1 el número de toasts visibles al mismo tiempo
             />
           </ThemeProvider>
+          </CompanyProvider>
         </UserProvider>
       </QueryClientProvider>
     </Router>

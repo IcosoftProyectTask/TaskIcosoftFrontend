@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Tooltip } from "@mui/material";
 import { TextField } from "@mui/material";
+import { getCompanies } from "../../service/Companys";
+import { MenuItem } from "@mui/material";
 const limitText = (text) => {
   if (text.length > 30) {
     return (
@@ -21,6 +23,8 @@ const filterDefault = [
   "notEquals",
   "fuzzy",
 ];
+
+
 
 export const columnsCompany = (validationErrors, setValidationErrors) => {
   const columns = useMemo(
@@ -128,10 +132,10 @@ export const columnsCompany = (validationErrors, setValidationErrors) => {
   return columns;
 };
 
-export const columnsRemote = (validationErrors, setValidationErrors) => {
+export const columnsRemote = (validationErrors, setValidationErrors, selectedCompany, companyOptions) => {
   const columns = useMemo(
     () => [
-      {
+      ...(!selectedCompany?.idCompany ? [{
         accessorKey: "customer",
         header: "Cliente",
         filterFn: "startsWith",
@@ -146,7 +150,7 @@ export const columnsRemote = (validationErrors, setValidationErrors) => {
               customer: undefined,
             }),
         }),
-      },
+      }] : []),
       {
         accessorKey: "terminal",
         header: "Terminal",
@@ -216,11 +220,8 @@ export const columnsRemote = (validationErrors, setValidationErrors) => {
         header: "Contraseña",
         filterFn: "startsWith",
         columnFilterModeOptions: filterDefault,
-       
         muiTableBodyCellEditTextFieldProps: ({ cell }) => ({
           required: true,
-          // Quitamos el tipo password para que se vea el texto
-          // type: "password",
           error: !!validationErrors?.password,
           helperText: validationErrors?.password,
           onFocus: () =>
@@ -231,13 +232,13 @@ export const columnsRemote = (validationErrors, setValidationErrors) => {
         }),
       },
     ],
-    [validationErrors, setValidationErrors]
+    [validationErrors, setValidationErrors, selectedCompany]
   );
 
   return columns;
 };
 
-export const columnsLicense = (validationErrors, setValidationErrors) => {
+export const columnsLicense = (validationErrors, setValidationErrors,typeOptions) => {
   const columns = useMemo(
     () => [
       {
@@ -289,21 +290,20 @@ export const columnsLicense = (validationErrors, setValidationErrors) => {
         }),
       },
       {
-        accessorKey: "type",
-        header: "Tipo",
-        filterFn: "startsWith",
-        columnFilterModeOptions: filterDefault,
-        muiTableBodyCellEditTextFieldProps: ({ cell }) => ({
-          required: true,
-          error: !!validationErrors?.type,
-          helperText: validationErrors?.type,
-          onFocus: () =>
-            setValidationErrors({
-              ...validationErrors,
-              type: undefined,
-            }),
-        }),
-      },
+        accessorKey: "typeLicenseName",
+        header: "Tipo de Licencia",
+        muiEditTextFieldProps: {
+          select: true,
+          children: typeOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          )),
+        },
+        // O si usas Material React Table con MRTColumnDef
+        editVariant: 'select',
+        editSelectOptions: typeOptions,
+      },      
       {
         accessorKey: "installationDate",
         header: "Fecha de instalación",
@@ -415,7 +415,7 @@ export const columnsLicense = (validationErrors, setValidationErrors) => {
         },
       },
     ],
-    [validationErrors, setValidationErrors]
+    [validationErrors, setValidationErrors, typeOptions]
   );
   return columns;
 };

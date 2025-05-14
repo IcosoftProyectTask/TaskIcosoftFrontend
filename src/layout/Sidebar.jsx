@@ -59,12 +59,6 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
     }
   }, [userRole, pathname, navigate]);
 
-  useEffect(() => {
-    if (userRole != 2 && pathname.includes("/webadmin")) {
-      // Redirige al usuario si no tiene el rol adecuado para la ruta
-      navigate("/not-authorized");  // O la ruta que desees para usuarios no autorizados
-    }
-  }, [userRole, pathname, navigate]);
 
   // Este useEffect se ejecutará solo una vez, al montar el componente
   // close on click outside
@@ -171,7 +165,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
 
             <ul className="mt-3">
 
-              {userRole === 2 ? (
+              
                 <li
                   className={`pl-4 pr-3 py-2 rounded-lg mb-0.5 last:mb-0 bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${pathname.includes("webadmin") &&
                     "from-blue-500/[0.12] dark:from-blue-500/[0.24] to-blue-500/[0.04]"
@@ -193,9 +187,7 @@ function Sidebar({ sidebarOpen, setSidebarOpen, variant = "default" }) {
                     </div>
                   </NavLink>
                 </li>
-              ) : null}
-
-
+           
 
               {userRole === 2 ? (
                 <li

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
@@ -18,6 +18,7 @@ import { isAxiosError } from 'axios';
 export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const { userInfo } = useUserContext();
   const [companies, setCompanies] = useState([]);
+  const [filteredCompanies, setFilteredCompanies] = useState([]);
   const [companyEmployees, setCompanyEmployees] = useState([]);
   const [priorities, setPriorities] = useState([]);
   const [statusTasks, setStatusTasks] = useState([]);
@@ -25,6 +26,9 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [enableManualEndTask, setEnableManualEndTask] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [companySearchTerm, setCompanySearchTerm] = useState('');
+  const companyDropdownRef = useRef(null);
 
   const [newTask, setNewTask] = useState({
     title: '',
@@ -49,6 +53,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         const usersData = await getAllUsers();
 
         setCompanies(Array.isArray(companiesData.data) ? companiesData.data : []);
+        setFilteredCompanies(Array.isArray(companiesData.data) ? companiesData.data : []);
         setPriorities(Array.isArray(prioritiesData.data) ? prioritiesData.data : []);
         setStatusTasks(Array.isArray(statusData.data) ? statusData.data : []);
 
@@ -62,6 +67,7 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         console.error('Error fetching data:', error);
         toast.error('Error al cargar los datos.');
         setCompanies([]);
+        setFilteredCompanies([]);
         setPriorities([]);
         setStatusTasks([]);
         setUsers([]);
@@ -79,12 +85,10 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
         try {
           const employeesData = await getCompanyEmployeesByCompanyId(selectedCompany);
 
-          // Verificar si es un solo empleado o un array
           if (employeesData && employeesData.success) {
             if (Array.isArray(employeesData.data)) {
               setCompanyEmployees(employeesData.data);
             } else if (employeesData.data && typeof employeesData.data === 'object') {
-              // Si es un solo objeto empleado, lo ponemos en un array
               setCompanyEmployees([employeesData.data]);
             } else {
               setCompanyEmployees([]);
@@ -94,7 +98,6 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
           }
         } catch (error) {
           console.error('Error fetching company employees:', error);
-      //    toast.error('Error al cargar los empleados de la compañía.');
           setCompanyEmployees([]);
         }
       };
@@ -105,6 +108,32 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     }
   }, [selectedCompany]);
 
+  useEffect(() => {
+    // Filtrar compañías según el término de búsqueda
+    if (companySearchTerm) {
+      const filtered = companies.filter(company => 
+        company.companyComercialName.toLowerCase().includes(companySearchTerm.toLowerCase())
+      );
+      setFilteredCompanies(filtered);
+    } else {
+      setFilteredCompanies(companies);
+    }
+  }, [companySearchTerm, companies]);
+
+  useEffect(() => {
+    // Cerrar el dropdown al hacer clic fuera
+    const handleClickOutside = (event) => {
+      if (companyDropdownRef.current && !companyDropdownRef.current.contains(event.target)) {
+        setShowCompanyDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleCreateTask = async () => {
     if (!newTask.title || !newTask.description || !newTask.idCompany || !newTask.idPriority || !newTask.idStatus || !newTask.idUser) {
       toast.error('Por favor, complete todos los campos requeridos.');
@@ -112,8 +141,6 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
     }
   
     let endTaskValue = null;
-  
-    // Buscar el nombre del estado seleccionado para tomar decisiones
     const selectedStatus = statusTasks.find(status => status.idStatus === newTask.idStatus);
   
     if (selectedStatus) {
@@ -122,7 +149,6 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       } else if (selectedStatus.name.toLowerCase() === 'pendiente') {
         endTaskValue = null;
       } else {
-        // En caso de otros estados, si quieres dejar el endTask como editable manualmente
         endTaskValue = enableManualEndTask ? newTask.endTask : null;
       }
     }
@@ -170,11 +196,26 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
       setIsSubmitting(false);
     }
   };
-  
+
+  const handleCompanySelect = (company) => {
+    setSelectedCompany(company.idCompany);
+    setNewTask({ ...newTask, idCompany: company.idCompany });
+    setCompanySearchTerm(company.companyComercialName);
+    setShowCompanyDropdown(false);
+  };
+
+  const handleCompanySearchChange = (e) => {
+    setCompanySearchTerm(e.target.value);
+    setShowCompanyDropdown(true);
+    if (!e.target.value) {
+      setNewTask({ ...newTask, idCompany: null });
+      setSelectedCompany(null);
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
+      <DialogContent className="max-w-4xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Crear Nueva Tarea</DialogTitle>
         </DialogHeader>
@@ -253,26 +294,28 @@ export const NewTaskModal = ({ isOpen, onClose, onTaskCreated }) => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="relative" ref={companyDropdownRef}>
                 <label className="text-sm font-medium mb-1 block text-gray-700 dark:text-gray-300">Compañía</label>
-                <Select
-                  value={newTask.idCompany?.toString()}
-                  onValueChange={(value) => {
-                    setSelectedCompany(parseInt(value));
-                    setNewTask({ ...newTask, idCompany: parseInt(value) });
-                  }}
-                >
-                  <SelectTrigger className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
-                    <SelectValue placeholder="Compañía" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
-                    {Array.isArray(companies) ? companies.map((company) => (
-                      <SelectItem key={company.idCompany} value={company.idCompany.toString()}>
+                <Input
+                  placeholder="Buscar compañía..."
+                  value={companySearchTerm}
+                  onChange={handleCompanySearchChange}
+                  onFocus={() => setShowCompanyDropdown(true)}
+                  className="bg-white text-gray-900 border border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700"
+                />
+                {showCompanyDropdown && filteredCompanies.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filteredCompanies.map((company) => (
+                      <div
+                        key={company.idCompany}
+                        className="px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+                        onClick={() => handleCompanySelect(company)}
+                      >
                         {company.companyComercialName}
-                      </SelectItem>
-                    )) : <SelectItem value="">No hay compañías disponibles</SelectItem>}
-                  </SelectContent>
-                </Select>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>

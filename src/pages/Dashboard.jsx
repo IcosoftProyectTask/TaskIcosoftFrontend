@@ -132,7 +132,7 @@ function Dashboard() {
   useEffect(() => {
     // Crear la conexión al Hub de SignalR
     const newConnection = new HubConnectionBuilder()
-      .withUrl('http://localhost:5272/taskHub')
+      .withUrl('http://localhost:5272/api/taskHub')
       .withAutomaticReconnect()
       .build();
 

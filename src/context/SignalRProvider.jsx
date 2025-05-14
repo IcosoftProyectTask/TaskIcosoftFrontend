@@ -54,7 +54,7 @@ export const SignalRProvider = ({ children }) => {
     // Crear la conexión al Hub de SignalR solo si no existe
     if (!connectionRef.current) {
       const newConnection = new HubConnectionBuilder()
-        .withUrl('http://localhost:5272/taskHub')
+        .withUrl('http://localhost:5272/api/taskHub')
         .withAutomaticReconnect()
         .build();
       

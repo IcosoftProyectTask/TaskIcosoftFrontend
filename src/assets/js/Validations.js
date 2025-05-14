@@ -29,10 +29,6 @@ export const validateUser = (values) => {
 export const validateRemoteData = (values) => {
   const errors = {};
 
-  if (!values.client || values.client.trim().length < 3) {
-    errors.client = "El nombre del cliente debe tener al menos 3 caracteres";
-  }
-
   if (!values.deviceName || values.deviceName.trim().length < 3) {
     errors.deviceName = "El nombre del dispositivo debe tener al menos 3 caracteres";
   }

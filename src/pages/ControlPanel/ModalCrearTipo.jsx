@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../componen
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Textarea } from "../../components/ui/Textarea";
-import { createType } from "../../service/Types";
+import { createType } from "../../service/TypesLicense";
 import { useQueryClient } from "@tanstack/react-query";
 
 const ModalCrearTipo = ({ tipo, onClose }) => {
